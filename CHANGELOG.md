@@ -1,6 +1,13 @@
 # Changelog
 
-## [0.4.0] - 2025-06-25
+## [0.4.1] - 2026-06-25
+
+- Add AMI (American Megatrends) Redfish driver (`AmiRedfishDriver`)
+  - Vendor auto-detection via `Vendor: "AMI"` / `Oem.Ami` in ServiceRoot
+  - PCIe devices collected from `Chassis/PCIeDevices` (AMI-specific path)
+  - SystemInfo filled from `Systems/Self/FruInfo` Board section when standard fields are empty
+
+## [0.4.0] - 2026-06-25
 
 Initial public release.
 
