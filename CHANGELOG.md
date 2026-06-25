@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.4.3] - 2026-06-25
+
+- Add `detected_serial` field to `BMCEndpoint` — stores system serial number after each scan
+- Display Detected Serial on endpoint detail page
+
 ## [0.4.2] - 2026-06-25
 
 - Fix: `detected_vendor` and `detected_protocol` fields were never persisted after BMC scan
