@@ -70,19 +70,8 @@ python manage.py migrate
 
 ### Docker (netbox-docker)
 
-Add a volume mount in `docker-compose.override.yml`:
-
-```yaml
-services:
-  netbox: &netbox
-    volumes:
-      - ./netbox-bmc:/opt/netbox-bmc
-```
-
-Install in editable mode and restart:
-
 ```bash
-docker compose exec netbox pip install -e /opt/netbox-bmc
+docker compose exec netbox pip install netbox-bmc
 docker compose exec netbox python manage.py migrate
 docker compose restart netbox netbox-worker
 ```

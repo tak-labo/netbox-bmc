@@ -70,19 +70,8 @@ python manage.py migrate
 
 ### Docker 環境（netbox-docker）
 
-`docker-compose.override.yml` にボリュームマウントを追加：
-
-```yaml
-services:
-  netbox: &netbox
-    volumes:
-      - ./netbox-bmc:/opt/netbox-bmc
-```
-
-editable インストール後、コンテナを再起動：
-
 ```bash
-docker compose exec netbox pip install -e /opt/netbox-bmc
+docker compose exec netbox pip install netbox-bmc
 docker compose exec netbox python manage.py migrate
 docker compose restart netbox netbox-worker
 ```
