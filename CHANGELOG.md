@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.4.2] - 2026-06-25
+
+- Fix: `detected_vendor` and `detected_protocol` fields were never persisted after BMC scan
+
 ## [0.4.1] - 2026-06-25
 
 - Add AMI (American Megatrends) Redfish driver (`AmiRedfishDriver`)
