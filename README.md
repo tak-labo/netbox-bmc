@@ -1,105 +1,186 @@
 # netbox-bmc
 
-IPMI/Redfish 統合のアウトオブバンド管理プラグイン。
-netbox-ipmi-plugin の後継として、マルチベンダー対応の Redfish を第一級でサポートする。
+[![NetBox](https://img.shields.io/badge/NetBox-4.5%20|%204.6-blue)](https://github.com/netbox-community/netbox)
+[![Python](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/)
+[![License](https://img.shields.io/badge/License-Apache%202.0-green)](LICENSE)
 
-## 機能 (v0.3)
+[日本語](README_ja.md)
 
-- **Module ビルダー**: BMC から検出したハードウェアを NetBox の Module として登録
-  - Redfish スキャン → コンポーネント一覧をプレビュー表示
-  - 個別チェックボックスで登録するコンポーネントを選択
-  - 新規 / 更新あり / 変更なし / 削除候補 をカラーバッジで表示
-  - ModuleBay が存在しない場合は自動作成（プレビューで事前通知）
-  - FRU 交換後のシリアル変更を検出して差分更新
-  - `bmc-synced` タグ付き Module のみ管理。手動登録 Module には触れない
-  - NIC の MAC は既存 Interface との突合のみ（Module 対象外）
-- **収集コンポーネント**:
-  - CPU / Memory / Drive / PSU / Fan / Firmware / PCI デバイス
-  - PSU・Fan は Chassis リンク経由、PCIe は PCIeDevices コレクション経由
-- **プロトコル自動検出**: `/redfish/v1` を probe → 失敗時 IPMI フォールバック
-- **ベンダー自動検出**: ServiceRoot の Vendor / Oem キーから判別し
-  必要に応じて Dell / HPE / Lenovo ドライバへディスパッチ
-- **電源操作**: on / off / soft / cycle / reset（両プロトコル対応）
+Unified out-of-band management plugin for NetBox.  
+Inventory sync and power control via Redfish & IPMI.
 
-## アーキテクチャ
+## Supported Protocols / Vendors
 
-```
-drivers/
-  base.py        # BaseDriver + detect_and_build（プロトコル自動判別）
-  redfish.py     # リンク探索ベースの汎用ドライバ + ベンダーサブクラス
-  ipmi.py        # pyghmi ベースのフォールバック
-inventory.py     # 正規化中間表現（InventoryResult / Component）
-normalizer.py    # Component → NormalizedComponent（"CPU 0" 等に正規化）
-module_sync.py   # 中間表現 → Module / ModuleBay / ModuleType の差分同期
-jobs.py          # ScheduledInventorySyncJob（定期一括同期、現在は stub）
-```
+| Protocol | Vendors |
+|---|---|
+| Redfish | Dell iDRAC, HPE iLO, Lenovo XCC, Supermicro, Generic |
+| IPMI | Fallback for any IPMI-capable BMC |
 
-ポイント: Redfish の URI はハードコードせず ServiceRoot からリンクを辿るため、
-iDRAC / iLO / XCC / Supermicro のパス差分はコード変更なしで吸収される。
+Protocol is auto-detected: probes `/redfish/v1` first, falls back to IPMI on failure.
 
-## インストール
+## Tested Hardware
+
+| Manufacturer | Model Series | BMC | Protocol | Status |
+|---|---|---|---|---|
+| Dell | PowerEdge | iDRAC 9 | Redfish | Expected to work |
+| HPE | ProLiant | iLO 5 | Redfish | Expected to work |
+| HPE | ProLiant | iLO 6 | Redfish | Expected to work |
+| Lenovo | ThinkSystem | XCC2 / XCC3 | Redfish | Expected to work |
+| Supermicro | X12 / X13 | BMC | Redfish | Expected to work |
+| Generic | — | Any IPMI-capable BMC | IPMI | Expected to work (fallback) |
+
+## Features
+
+- **Module Builder**: Sync BMC hardware inventory to NetBox Modules
+  - Scan via Redfish → preview detected components with diff badges (new / updated / unchanged / removed)
+  - Select individual components before applying
+  - Auto-create ModuleBays when missing (warned in preview)
+  - Detect serial number changes after FRU replacement and apply diff updates
+  - Only manages `bmc-synced`-tagged Modules; never touches manually created Modules
+- **Collected components**: CPU, Memory, Drive, PSU, Fan, Firmware, PCI devices
+  - PSU and Fan collected via Chassis link; PCIe via PCIeDevices collection
+- **Vendor auto-detection**: Dispatches to Dell / HPE / Lenovo subclass drivers based on ServiceRoot `Vendor` / `Oem` keys
+- **Power control**: on / off / soft / cycle / reset (both protocols)
+
+## Install
+
+### Standard (non-Docker)
 
 ```bash
-pip install ./netbox-bmc
+pip install netbox-bmc
 ```
 
-`configuration.py`:
+Add to `configuration.py`:
 
 ```python
 PLUGINS = ["netbox_bmc"]
 PLUGINS_CONFIG = {
     "netbox_bmc": {
-        "sync_interval_minutes": 0,  # >0 で全デバイス定期同期（未実装）
+        "sync_interval_minutes": 0,
         "default_verify_ssl": False,
     },
 }
 ```
 
+Run migrations:
+
 ```bash
-python manage.py makemigrations netbox_bmc
 python manage.py migrate
 ```
 
-## 使い方
+### Docker (netbox-docker)
 
-1. NetBox の Device に **BMC Endpoint** を追加（アドレス・認証情報を設定）
-2. Endpoint 詳細画面の **[Build Modules]** ボタンをクリック
-3. BMC スキャンが実行され、検出コンポーネントのプレビューが表示される
-4. 登録したいコンポーネントにチェックを入れて **[Apply Selected]** を実行
-5. ModuleBay / ModuleType / Module が自動作成される
+Add a volume mount in `docker-compose.override.yml`:
 
-### Module 名の命名規則
+```yaml
+services:
+  netbox: &netbox
+    volumes:
+      - ./netbox-bmc:/opt/netbox-bmc
+```
 
-ベンダー固有の名前（`CPU.Socket.1`、`Processor 0` 等）は自動的に正規化される：
+Install in editable mode and restart:
 
-| Redfish 生値 | 正規化後 |
+```bash
+docker compose exec netbox pip install -e /opt/netbox-bmc
+docker compose exec netbox python manage.py migrate
+docker compose restart netbox netbox-worker
+```
+
+## Configure
+
+Edit `PLUGINS_CONFIG["netbox_bmc"]` in `configuration.py`:
+
+| Key | Default | Description |
+|---|---|---|
+| `sync_interval_minutes` | `0` | Scheduled bulk sync interval in minutes. `0` disables. |
+| `default_verify_ssl` | `False` | Default SSL verification for new BMC Endpoints. |
+| `service_account` | — | Service account name for background jobs (netbox-secrets). |
+| `service_private_key_path` | — | Path to private key for service account (netbox-secrets). |
+
+## Use
+
+1. Open a Device in NetBox and click **BMC Endpoints** → **Add**
+2. Enter the BMC address and credentials, then save
+3. On the Endpoint detail page, click **[Build Modules]**
+4. Review the component preview (new / updated / unchanged / removed)
+5. Check the components to sync and click **[Apply Selected]**
+
+ModuleBays, ModuleTypes, and Modules are created or updated automatically.
+
+### Module Naming
+
+Vendor-specific names are normalized to a consistent format:
+
+| Raw name (Redfish) | Normalized |
 |---|---|
 | `CPU.Socket.1` / `Processor 0` | `CPU 0` |
 | `DIMM.A1` / `Memory 0` | `Memory 0` |
 | `Disk.Bay.0` | `Drive 0` |
 | `NIC.Slot.1` (PCIe) | `PCI 0` |
 
-### カスタムフィールド
+### Custom Fields
 
-Module に以下のカスタムフィールドが自動設定される：
+The following custom fields are set automatically on each Module:
 
-| フィールド | 内容 |
+| Field | Content |
 |---|---|
-| `bmc_redfish_path` | 取得元 Redfish パス |
-| `bmc_firmware_version` | ファームウェアバージョン |
+| `bmc_redfish_path` | Source Redfish URI |
+| `bmc_firmware_version` | Firmware version string |
 
-## テスト
+## Versions
+
+| netbox-bmc | NetBox |
+|---|---|
+| 0.4.x | 4.5, 4.6 |
+
+## Vendor Notes
+
+### Dell iDRAC
+
+iDRAC 9 (Redfish 1.x) is the primary target. URI traversal starts from `ServiceRoot` links — no hardcoded paths — so firmware variations should be absorbed automatically.
+
+### HPE iLO
+
+iLO 5 and iLO 6 are supported via the HPE subclass driver. iLO 4 (Redfish 1.0 partial compliance) is **not tested** and may not work correctly.
+
+### Lenovo XCC
+
+XCC2 and XCC3 are supported. Some older XCC firmware versions expose non-standard collection URIs; the link-traversal approach handles most variations.
+
+### Supermicro
+
+Generic Redfish driver is used. Supermicro BMC firmware varies significantly; behaviour may differ across firmware versions.
+
+## Development
 
 ```bash
+# Install dev dependencies
 uv sync --extra dev
+
+# Run tests
 uv run pytest
 ```
 
-## 既知の制限 / TODO
+### Adding a New Vendor
 
-- [ ] **認証情報が平文保存** — netbox-secrets または HashiCorp Vault 統合へ移行すること
-- [ ] REST API（api/serializers, viewsets）未実装
-- [ ] マルチノードシャーシ（Systems が複数）未対応
-- [ ] 定期一括 Module 同期（ScheduledInventorySyncJob）未実装
-- [ ] KVM / SOL コンソールは旧プラグインから未移植
-- [ ] HPE iLO4 など Redfish 準拠度の低い古い BMC での検証
+1. Add a subclass in `netbox_bmc/drivers/redfish.py` extending `RedfishDriver`
+2. Register it in `detect_and_build()` in `netbox_bmc/drivers/base.py` by matching `ServiceRoot` vendor keys
+3. Add unit tests in `tests/test_redfish_extensions.py`
+
+### Adding a New Protocol
+
+Implement `BaseDriver` (`netbox_bmc/drivers/base.py`) and return `InventoryResult` from `get_inventory()`.
+
+## Known Limitations
+
+- **Credentials stored in plaintext** — migration to netbox-secrets or HashiCorp Vault planned
+- REST API (serializers / viewsets) not yet implemented
+- Multi-node chassis (multiple `Systems`) not supported
+- Scheduled bulk sync (`ScheduledInventorySyncJob`) not yet implemented
+- KVM / SOL console not yet ported from the predecessor plugin
+- Old BMCs with low Redfish compliance (e.g. HPE iLO 4) not validated
+
+## License
+
+Apache License 2.0 — see [LICENSE](LICENSE).
