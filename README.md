@@ -172,9 +172,18 @@ uv run pytest
 
 Implement `BaseDriver` (`netbox_bmc/drivers/base.py`) and return `InventoryResult` from `get_inventory()`.
 
+## Credentials
+
+netbox-bmc resolves BMC credentials in the following order:
+
+1. **netbox-secrets** (preferred) — `Secret` with role `bmc-credentials` assigned to the Device.  
+   `Secret.name` = BMC username, `Secret.plaintext` = BMC password (RSA-encrypted).
+2. **Plaintext fallback** — `username` / `password` fields on `BMCEndpoint`, used when netbox-secrets is not installed or no matching secret is found.
+
+For background jobs (scheduled sync), set `service_account` and `service_private_key_path` in `PLUGINS_CONFIG` so the job can decrypt secrets without an HTTP session.
+
 ## Known Limitations
 
-- **Credentials stored in plaintext** — migration to netbox-secrets or HashiCorp Vault planned
 - REST API (serializers / viewsets) not yet implemented
 - Multi-node chassis (multiple `Systems`) not supported
 - Scheduled bulk sync (`ScheduledInventorySyncJob`) not yet implemented

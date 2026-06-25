@@ -172,9 +172,18 @@ uv run pytest
 
 `netbox_bmc/drivers/base.py` の `BaseDriver` を実装し、`get_inventory()` から `InventoryResult` を返してください。
 
+## 認証情報
+
+BMC 認証情報は以下の順で解決されます：
+
+1. **netbox-secrets**（優先） — `bmc-credentials` ロールの `Secret` が Device に紐付けられている場合。  
+   `Secret.name` = BMC ユーザー名、`Secret.plaintext` = BMC パスワード（RSA 暗号化）。
+2. **平文フォールバック** — netbox-secrets 未インストール、またはシークレット未設定時に `BMCEndpoint` の `username` / `password` フィールドを使用。
+
+バックグラウンドジョブ（定期同期）では、`PLUGINS_CONFIG` に `service_account` と `service_private_key_path` を設定することで HTTP セッションなしで復号できます。
+
 ## 既知の制限
 
-- **認証情報が平文保存** — netbox-secrets または HashiCorp Vault 統合へ移行予定
 - REST API（serializers / viewsets）未実装
 - マルチノードシャーシ（Systems が複数）未対応
 - 定期一括同期（ScheduledInventorySyncJob）未実装
