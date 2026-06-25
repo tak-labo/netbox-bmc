@@ -50,10 +50,13 @@ class IPMIDriver(BaseDriver):
                 if info is None:
                     continue
                 if name == "System":
-                    system.manufacturer = info.get("Manufacturer", "") or ""
-                    system.model = info.get("Product name", "") or ""
-                    system.serial = info.get("Serial Number", "") or ""
-                    system.uuid = str(info.get("UUID", "") or "")
+                    system.manufacturer = (info.get("Manufacturer")
+                                           or info.get("Board manufacturer") or "")
+                    system.model = (info.get("Product name")
+                                    or info.get("Board product name") or "")
+                    system.serial = (info.get("Serial Number")
+                                     or info.get("Board serial number") or "")
+                    system.uuid = str(info.get("UUID") or "")
                 else:
                     components.append(Component(
                         kind=_guess_kind(name),
