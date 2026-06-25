@@ -1,0 +1,145 @@
+{% extends "generic/object.html" %}
+{% load helpers %}
+
+{% block title %}Build Modules — {{ object }}{% endblock %}
+
+{% block extra_controls %}
+  <form method="post" action="{{ scan_url }}" class="d-inline">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-outline-secondary">
+      <i class="mdi mdi-sync"></i> Rescan
+    </button>
+  </form>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col">
+    <div class="card">
+      <h5 class="card-header d-flex align-items-center gap-2">
+        Module Preview
+        {% if vendor %}
+          <span class="badge bg-secondary">{{ vendor }}</span>
+        {% endif %}
+        {% if protocol %}
+          <span class="badge bg-info text-dark">{{ protocol }}</span>
+        {% endif %}
+      </h5>
+      <div class="card-body pb-2">
+        <div class="d-flex flex-wrap gap-3 align-items-center">
+          <span class="text-muted small fw-bold">Type filter:</span>
+          {% for kind, label, default_checked in kind_filters %}
+          <div class="form-check form-check-inline mb-0">
+            <input class="form-check-input kind-filter"
+                   type="checkbox"
+                   id="filter-{{ kind }}"
+                   data-kind="{{ kind }}"
+                   {% if default_checked %}checked{% endif %}>
+            <label class="form-check-label" for="filter-{{ kind }}">{{ label }}</label>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="card-body p-0">
+        <form method="post" action="{{ apply_url }}">
+          {% csrf_token %}
+          <table class="table table-hover mb-0">
+            <thead class="table-light">
+              <tr>
+                <th style="width:2rem"></th>
+                <th>Status</th>
+                <th>Module Bay</th>
+                <th>Kind</th>
+                <th>Redfish Slot / Path</th>
+                <th>Serial</th>
+                <th>Part</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for entry in entries %}
+              <tr class="entry-row kind-{{ entry.kind }} {% if entry.status == 'new' %}table-success{% elif entry.status == 'updated' %}table-warning{% elif entry.status == 'removed' %}table-danger{% endif %}">
+                <td>
+                  {% if entry.status == "removed" %}
+                    <input type="checkbox" name="delete" value="{{ entry.normalized_name }}" class="entry-cb" data-kind="{{ entry.kind }}">
+                  {% else %}
+                    <input type="checkbox" name="selected" value="{{ entry.normalized_name }}" class="entry-cb" data-kind="{{ entry.kind }}"
+                      {% if entry.status != "unchanged" and entry.kind not in unchecked_kinds %}checked{% endif %}>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if entry.status == "new" %}
+                    <span class="badge bg-success">New</span>
+                  {% elif entry.status == "updated" %}
+                    <span class="badge bg-warning text-dark">Updated</span>
+                  {% elif entry.status == "removed" %}
+                    <span class="badge bg-danger">Removed</span>
+                  {% else %}
+                    <span class="badge bg-secondary">Unchanged</span>
+                  {% endif %}
+                  {% if not entry.bay_exists %}
+                    <span class="badge bg-info text-dark ms-1"
+                          title="ModuleBay will be auto-created">
+                      <i class="mdi mdi-plus-circle-outline"></i> New Bay
+                    </span>
+                  {% endif %}
+                </td>
+                <td><code>{{ entry.normalized_name }}</code></td>
+                <td>
+                  <span class="badge bg-light text-dark border">
+                    {{ entry.kind|upper }}
+                  </span>
+                </td>
+                <td>
+                  <span class="text-muted small">{{ entry.raw_name }}</span>
+                  {% if entry.source_path %}
+                    <br><span class="text-muted small font-monospace">{{ entry.source_path }}</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if entry.serial %}{{ entry.serial }}{% else %}&mdash;{% endif %}
+                  {% if entry.status == "updated" and entry.old_serial and entry.old_serial != entry.serial %}
+                    <br><small class="text-danger text-decoration-line-through">{{ entry.old_serial }}</small>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if entry.part_id %}{{ entry.part_id }}{% else %}&mdash;{% endif %}
+                  {% if entry.status == "updated" and entry.old_part_id and entry.old_part_id != entry.part_id %}
+                    <br><small class="text-danger text-decoration-line-through">{{ entry.old_part_id }}</small>
+                  {% endif %}
+                </td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="7" class="text-center text-muted py-4">
+                  No components detected.
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          <div class="card-footer d-flex justify-content-between align-items-center">
+            <a href="{{ object.get_absolute_url }}" class="btn btn-secondary">
+              Cancel
+            </a>
+            <button type="submit" class="btn btn-primary">
+              <i class="mdi mdi-check-bold"></i> Apply Selected
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.querySelectorAll('.kind-filter').forEach(function(filterCb) {
+  filterCb.addEventListener('change', function() {
+    var kind = this.dataset.kind;
+    var checked = this.checked;
+    document.querySelectorAll('.entry-cb[data-kind="' + kind + '"]').forEach(function(cb) {
+      cb.checked = checked;
+    });
+  });
+});
+</script>
+{% endblock %}

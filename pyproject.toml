@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "netbox-bmc-plugin"
+version = "0.4.0"
+description = "Unified out-of-band management for NetBox: Redfish & IPMI inventory sync, power control, console access"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "requests>=2.31",
+    "pyghmi>=1.5",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "pytest-mock>=3.14"]
+
+[tool.setuptools.packages.find]
+include = ["netbox_bmc*"]
+
+[tool.setuptools.package-data]
+netbox_bmc = [
+    "templates/**/*",
+    "static/**/*",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

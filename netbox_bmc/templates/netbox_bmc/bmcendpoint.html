@@ -1,0 +1,96 @@
+{% extends "generic/object.html" %}
+{% load helpers %}
+
+{% block extra_controls %}
+  <form method="post"
+        action="{% url 'plugins:netbox_bmc:bmcendpoint_build_modules' pk=object.pk %}"
+        class="d-inline">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-primary">
+      <i class="mdi mdi-chip"></i> Build Modules
+    </button>
+  </form>
+  <a href="{% url 'plugins:netbox_bmc:bmcendpoint_raw' pk=object.pk %}?depth=3"
+     target="_blank" class="btn btn-outline-secondary ms-1">
+    <i class="mdi mdi-code-json"></i> Raw Data
+  </a>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col col-md-6">
+    <div class="card">
+      <h5 class="card-header">BMC Endpoint</h5>
+      <table class="table table-hover attr-table">
+        <tr><th scope="row">Device</th>
+            <td>{{ object.device|linkify }}</td></tr>
+        <tr><th scope="row">Address</th>
+            <td>{{ object.address }}{% if object.port %}:{{ object.port }}{% endif %}</td></tr>
+        <tr><th scope="row">Protocol</th>
+            <td>{{ object.get_protocol_display }}</td></tr>
+        <tr><th scope="row">Verify SSL</th>
+            <td>{% checkmark object.verify_ssl %}</td></tr>
+      </table>
+    </div>
+
+    <div class="card mt-3">
+      <h5 class="card-header">Credentials</h5>
+      <table class="table table-hover attr-table">
+        {% if secrets_available %}
+          <tr>
+            <th scope="row">netbox-secrets</th>
+            <td>
+              {% if secret_found %}
+                <span class="badge bg-success">
+                  <i class="mdi mdi-lock-check"></i> Secret found (bmc-credentials role)
+                </span>
+              {% else %}
+                <span class="badge bg-warning text-dark">
+                  <i class="mdi mdi-lock-alert"></i> No secret found for this device
+                </span>
+                <div class="text-muted small mt-1">
+                  Add a Secret with role <code>bmc-credentials</code> assigned to
+                  <strong>{{ object.device }}</strong>.<br>
+                  Set <em>Name</em> = BMC username, <em>Plaintext</em> = BMC password.
+                  {% if object.username %}
+                    Falling back to plaintext fields.
+                  {% endif %}
+                </div>
+              {% endif %}
+            </td>
+          </tr>
+        {% else %}
+          <tr>
+            <td colspan="2">
+              <span class="badge bg-secondary">netbox-secrets not installed</span>
+              — credentials stored in plaintext fields below.
+            </td>
+          </tr>
+        {% endif %}
+        {% if object.username %}
+          <tr><th scope="row">Username (fallback)</th>
+              <td><code>{{ object.username }}</code></td></tr>
+          <tr><th scope="row">Password (fallback)</th>
+              <td><em class="text-muted">stored (plaintext)</em></td></tr>
+        {% endif %}
+      </table>
+    </div>
+  </div>
+
+  <div class="col col-md-6">
+    <div class="card">
+      <h5 class="card-header">Sync Status</h5>
+      <table class="table table-hover attr-table">
+        <tr><th scope="row">Detected Vendor</th>
+            <td>{{ object.detected_vendor|placeholder }}</td></tr>
+        <tr><th scope="row">Detected Protocol</th>
+            <td>{{ object.detected_protocol|placeholder }}</td></tr>
+        <tr><th scope="row">Last Sync</th>
+            <td>{{ object.last_sync|placeholder }}</td></tr>
+        <tr><th scope="row">Status</th>
+            <td>{{ object.last_sync_status|placeholder }}</td></tr>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,103 @@
+"""
+IPMI ドライバ (レガシー BMC 向けフォールバック)。
+
+pyghmi の get_inventory() で FRU 情報を取得する。
+Redfish より取得できる情報は限定的 (CPU/DIMM の詳細は出ないことが多い)。
+既存 netbox-ipmi-plugin の電源操作・SOL 周りはここに段階的に移植する。
+"""
+from __future__ import annotations
+
+import logging
+
+from ..inventory import Component, InventoryResult, SystemInfo
+from .base import BaseDriver, BMCError
+
+logger = logging.getLogger("netbox_bmc.ipmi")
+
+POWER_ACTION_MAP = {
+    "on": "on",
+    "off": "off",
+    "soft": "softoff",
+    "cycle": "boot",   # pyghmi: off→on
+    "reset": "reset",
+}
+
+
+class IPMIDriver(BaseDriver):
+    protocol = "ipmi"
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        try:
+            from pyghmi.ipmi import command
+        except ImportError as e:
+            raise BMCError("pyghmi is not installed") from e
+        try:
+            self.cmd = command.Command(
+                bmc=self.address,
+                userid=self.username,
+                password=self.password,
+                port=self.port or 623,
+            )
+        except Exception as e:
+            raise BMCError(f"IPMI connection to {self.address} failed: {e}") from e
+
+    def get_inventory(self) -> InventoryResult:
+        system = SystemInfo()
+        components: list[Component] = []
+        try:
+            for name, info in self.cmd.get_inventory():
+                if info is None:
+                    continue
+                if name == "System":
+                    system.manufacturer = info.get("Manufacturer", "") or ""
+                    system.model = info.get("Product name", "") or ""
+                    system.serial = info.get("Serial Number", "") or ""
+                    system.uuid = str(info.get("UUID", "") or "")
+                else:
+                    components.append(Component(
+                        kind=_guess_kind(name),
+                        name=name,
+                        manufacturer=info.get("Manufacturer", "") or "",
+                        part_id=info.get("Part Number", "")
+                                or info.get("Product name", "") or "",
+                        serial=info.get("Serial Number", "") or "",
+                    ))
+        except Exception as e:
+            raise BMCError(f"IPMI FRU read failed: {e}") from e
+
+        return InventoryResult(system=system, components=components,
+                               vendor=system.manufacturer or "Unknown",
+                               protocol=self.protocol)
+
+    def get_power_state(self) -> str:
+        try:
+            return self.cmd.get_power().get("powerstate", "unknown")
+        except Exception as e:
+            raise BMCError(str(e)) from e
+
+    def set_power(self, action: str) -> None:
+        mapped = POWER_ACTION_MAP.get(action)
+        if not mapped:
+            raise BMCError(f"Unknown power action: {action}")
+        try:
+            self.cmd.set_power(mapped, wait=False)
+        except Exception as e:
+            raise BMCError(f"IPMI power action failed: {e}") from e
+
+    def close(self):
+        try:
+            self.cmd.ipmi_session.logout()
+        except Exception:
+            pass
+
+
+def _guess_kind(fru_name: str) -> str:
+    n = fru_name.lower()
+    if "psu" in n or "power" in n:
+        return "psu"
+    if "fan" in n:
+        return "fan"
+    if "nic" in n or "net" in n:
+        return "nic"
+    return "other"
