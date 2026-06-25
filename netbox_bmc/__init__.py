@@ -1,13 +1,20 @@
 from netbox.plugins import PluginConfig
 
+__version__ = "0.4.0"
+__author__ = "tak-labo"
+__email__ = ""
+
 
 class NetBoxBMCConfig(PluginConfig):
     name = "netbox_bmc"
     verbose_name = "NetBox BMC (IPMI/Redfish)"
     description = "Unified out-of-band management: Redfish & IPMI inventory sync, power control, console access"
-    version = "0.4.0"
+    version = __version__
+    author = __author__
+    author_email = __email__
     base_url = "bmc"
     min_version = "4.5"
+    max_version = "4.6.99"
     default_settings = {
         # 定期一括同期の間隔 (分)。0 で無効。
         "sync_interval_minutes": 0,
