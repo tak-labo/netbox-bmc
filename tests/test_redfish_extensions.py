@@ -5,7 +5,7 @@ Tests run against mocked Redfish HTTP responses without a real BMC.
 """
 from unittest.mock import patch
 
-from netbox_bmc.drivers.redfish import RedfishDriver
+from netbox_bmc.drivers.redfish import AmiRedfishDriver, RedfishDriver
 
 
 def make_driver():
@@ -136,3 +136,66 @@ def test_collect_pcie_no_collection_key():
     driver = make_driver()
     comps = driver._collect_pcie_devices({})
     assert comps == []
+
+
+# --- AMI subclass -----------------------------------------------------------
+
+def make_ami_driver():
+    with patch.object(AmiRedfishDriver, "_login"):
+        return AmiRedfishDriver("ami-bmc.example.com", "admin", "pass")
+
+
+def test_ami_collect_pcie_via_chassis():
+    """AmiRedfishDriver collects PCIe devices from Chassis link, not System."""
+    driver = make_ami_driver()
+    sysres = {"Links": {"Chassis": [{"@odata.id": "/redfish/v1/Chassis/Self"}]}}
+    chassis = {"PCIeDevices": {"@odata.id": "/redfish/v1/Chassis/Self/PCIeDevices"}}
+    pcie_member = {
+        "@odata.id": "/redfish/v1/Chassis/Self/PCIeDevices/GPU.Slot.1",
+        "Id": "GPU.Slot.1",
+        "Name": "NVIDIA A100",
+        "Manufacturer": "NVIDIA",
+        "Model": "A100-SXM4-80GB",
+        "SerialNumber": "GPU0001",
+        "Status": {"State": "Enabled"},
+    }
+    with patch.object(driver, "_get_optional", side_effect=[
+        chassis,
+        {"Members": [{"@odata.id": "/redfish/v1/Chassis/Self/PCIeDevices/GPU.Slot.1"}]},
+        pcie_member,
+    ]):
+        comps = driver._collect_pcie_devices(sysres)
+    assert len(comps) == 1
+    assert comps[0].kind == "pci"
+    assert comps[0].name == "GPU.Slot.1"
+    assert comps[0].manufacturer == "NVIDIA"
+    assert comps[0].part_id == "A100-SXM4-80GB"
+    assert comps[0].serial == "GPU0001"
+
+
+def test_ami_collect_pcie_absent_skipped():
+    """AmiRedfishDriver skips Absent PCIe devices from Chassis."""
+    driver = make_ami_driver()
+    sysres = {"Links": {"Chassis": [{"@odata.id": "/redfish/v1/Chassis/Self"}]}}
+    chassis = {"PCIeDevices": {"@odata.id": "/redfish/v1/Chassis/Self/PCIeDevices"}}
+    with patch.object(driver, "_get_optional", side_effect=[
+        chassis,
+        {"Members": [{"@odata.id": "/redfish/v1/Chassis/Self/PCIeDevices/Slot.2"}]},
+        {"Id": "Slot.2", "Status": {"State": "Absent"}},
+    ]):
+        comps = driver._collect_pcie_devices(sysres)
+    assert comps == []
+
+
+def test_ami_detect_vendor_from_oem_key():
+    """detect_vendor should return 'AMI' when Oem.Ami is present."""
+    from netbox_bmc.drivers.redfish import RedfishDriver
+    root = {"Oem": {"Ami": {}}}
+    assert RedfishDriver.detect_vendor(root) == "AMI"
+
+
+def test_ami_detect_vendor_from_vendor_field():
+    """detect_vendor should return 'AMI' from Vendor field."""
+    from netbox_bmc.drivers.redfish import RedfishDriver
+    root = {"Vendor": "AMI", "Oem": {"Ami": {}}}
+    assert RedfishDriver.detect_vendor(root) == "AMI"

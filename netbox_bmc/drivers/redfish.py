@@ -481,7 +481,8 @@ class RedfishDriver(BaseDriver):
         if sysres:
             oem_keys |= set(sysres.get("Oem", {}).keys())
         for key, name in (("Dell", "Dell"), ("Hpe", "HPE"), ("Hp", "HPE"),
-                          ("Lenovo", "Lenovo"), ("Supermicro", "Supermicro")):
+                          ("Lenovo", "Lenovo"), ("Supermicro", "Supermicro"),
+                          ("Ami", "AMI")):
             if key in oem_keys:
                 return name
         if sysres and sysres.get("Manufacturer"):
@@ -500,6 +501,34 @@ class RedfishDriver(BaseDriver):
 
 # --- ベンダーサブクラス (OEM 拡張が必要な場合のみオーバーライド) ----------
 
+class AmiRedfishDriver(RedfishDriver):
+    """AMI Redfish Server (American Megatrends BMC)。
+
+    PCIeDevices が Systems ではなく Chassis リンク配下に置かれるため上書き。
+    """
+    vendor = "AMI"
+
+    def _collect_pcie_devices(self, sysres) -> list[Component]:
+        out = []
+        for chassis_ref in sysres.get("Links", {}).get("Chassis", [])[:1]:
+            chassis = self._get_optional(chassis_ref.get("@odata.id", ""))
+            if not chassis:
+                continue
+            for pcie in self._collection(chassis, "PCIeDevices"):
+                if pcie.get("Status", {}).get("State") == "Absent":
+                    continue
+                out.append(Component(
+                    kind="pci",
+                    name=pcie.get("Id") or pcie.get("Name", "PCIe"),
+                    manufacturer=(pcie.get("Manufacturer") or "").strip(),
+                    part_id=(pcie.get("Model") or "").strip(),
+                    serial=(pcie.get("SerialNumber") or "").strip(),
+                    description=(pcie.get("Name") or "").strip(),
+                    source_path=pcie.get("@odata.id", ""),
+                ))
+        return out
+
+
 class DellRedfishDriver(RedfishDriver):
     """iDRAC: Oem.Dell 配下にジョブキューや詳細 FRU 情報がある。"""
     vendor = "Dell"
@@ -516,6 +545,7 @@ class LenovoRedfishDriver(RedfishDriver):
 
 
 VENDOR_DRIVERS = {
+    "AMI": AmiRedfishDriver,
     "Dell": DellRedfishDriver,
     "HPE": HPERedfishDriver,
     "Lenovo": LenovoRedfishDriver,

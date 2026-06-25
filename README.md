@@ -13,7 +13,7 @@ Inventory sync and power control via Redfish & IPMI.
 
 | Protocol | Vendors |
 |---|---|
-| Redfish | Dell iDRAC, HPE iLO, Lenovo XCC, Supermicro, Generic |
+| Redfish | Dell iDRAC, HPE iLO, Lenovo XCC, Supermicro, AMI, Generic |
 | IPMI | Fallback for any IPMI-capable BMC |
 
 Protocol is auto-detected: probes `/redfish/v1` first, falls back to IPMI on failure.
@@ -27,6 +27,7 @@ Protocol is auto-detected: probes `/redfish/v1` first, falls back to IPMI on fai
 | HPE | ProLiant | iLO 6 | Redfish | Expected to work |
 | Lenovo | ThinkSystem | XCC2 / XCC3 | Redfish | Expected to work |
 | Supermicro | X12 / X13 | BMC | Redfish | Expected to work |
+| AMI | ASMB-based servers | AMI Redfish Server | Redfish | Expected to work |
 | Generic | — | Any IPMI-capable BMC | IPMI | Expected to work (fallback) |
 
 ## Features
@@ -175,6 +176,10 @@ XCC2 and XCC3 are supported. Some older XCC firmware versions expose non-standar
 ### Supermicro
 
 Generic Redfish driver is used. Supermicro BMC firmware varies significantly; behaviour may differ across firmware versions.
+
+### AMI (American Megatrends)
+
+AMI Redfish Server (detected via `Vendor: "AMI"` in ServiceRoot). PCIe devices are exposed under `Chassis/PCIeDevices` rather than `Systems/PCIeDevices`; the AMI subclass driver handles this automatically. Hardware inventory (CPU, Memory) populates only when the host is powered on.
 
 ## Development
 
