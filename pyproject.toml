@@ -3,7 +3,7 @@ requires = ["setuptools>=64"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "netbox-bmc-plugin"
+name = "netbox-bmc"
 version = "0.4.0"
 description = "Unified out-of-band management for NetBox: Redfish & IPMI inventory sync, power control, console access"
 readme = "README.md"
