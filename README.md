@@ -48,6 +48,7 @@ Protocol is auto-detected: probes `/redfish/v1` first, falls back to IPMI on fai
 
 ```bash
 pip install netbox-bmc
+python manage.py migrate
 ```
 
 Add to `configuration.py`:
@@ -62,18 +63,52 @@ PLUGINS_CONFIG = {
 }
 ```
 
-Run migrations:
-
-```bash
-python manage.py migrate
-```
-
 ### Docker (netbox-docker)
 
+Follow the [official plugin installation guide](https://github.com/netbox-community/netbox-docker/wiki/Using-Netbox-Plugins).
+
+**`plugin_requirements.txt`**
+```
+netbox-bmc
+```
+
+**`Dockerfile-Plugins`**
+```dockerfile
+FROM netboxcommunity/netbox:latest
+
+COPY ./plugin_requirements.txt /opt/netbox/
+RUN /usr/local/bin/uv pip install -r /opt/netbox/plugin_requirements.txt
+```
+
+**`docker-compose.override.yml`**
+```yaml
+services:
+  netbox:
+    image: netbox:latest-plugins
+    pull_policy: never
+    build:
+      context: .
+      dockerfile: Dockerfile-Plugins
+  netbox-worker:
+    image: netbox:latest-plugins
+    pull_policy: never
+```
+
+**`configuration/plugins.py`**
+```python
+PLUGINS = ["netbox_bmc"]
+PLUGINS_CONFIG = {
+    "netbox_bmc": {
+        "sync_interval_minutes": 0,
+        "default_verify_ssl": False,
+    },
+}
+```
+
+Build and start:
 ```bash
-docker compose exec netbox pip install netbox-bmc
-docker compose exec netbox python manage.py migrate
-docker compose restart netbox netbox-worker
+docker compose build --no-cache
+docker compose up -d
 ```
 
 ## Configure
