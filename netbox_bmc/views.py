@@ -70,7 +70,8 @@ class BuildModulesView(View):
 
         endpoint.detected_vendor = result.vendor
         endpoint.detected_protocol = result.protocol
-        endpoint.save(update_fields=["detected_vendor", "detected_protocol"])
+        endpoint.detected_serial = result.system.serial
+        endpoint.save(update_fields=["detected_vendor", "detected_protocol", "detected_serial"])
 
         firmware = {
             c.name: c.firmware

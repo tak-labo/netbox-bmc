@@ -40,6 +40,7 @@ class BMCEndpoint(JobsMixin, NetBoxModel):
     # 同期ステータス
     detected_vendor = models.CharField(max_length=64, blank=True)
     detected_protocol = models.CharField(max_length=16, blank=True)
+    detected_serial = models.CharField(max_length=255, blank=True)
     last_sync = models.DateTimeField(blank=True, null=True)
     last_sync_status = models.CharField(max_length=255, blank=True)
 
