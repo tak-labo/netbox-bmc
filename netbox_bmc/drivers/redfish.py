@@ -504,9 +504,39 @@ class RedfishDriver(BaseDriver):
 class AmiRedfishDriver(RedfishDriver):
     """AMI Redfish Server (American Megatrends BMC)。
 
-    PCIeDevices が Systems ではなく Chassis リンク配下に置かれるため上書き。
+    - PCIeDevices が Systems ではなく Chassis リンク配下に置かれるため上書き。
+    - Systems/Self の Manufacturer/Model/SerialNumber が空のため FruInfo から補完。
     """
     vendor = "AMI"
+
+    def get_inventory(self):
+        result = super().get_inventory()
+        self._fill_system_from_fru(result)
+        return result
+
+    def _fill_system_from_fru(self, result) -> None:
+        """Systems/Self/FruInfo の Board セクションで SystemInfo の空フィールドを補完。"""
+        try:
+            root = self._get("/redfish/v1")
+            systems = self._collection(root, "Systems")
+            if not systems:
+                return
+            fru_ref = systems[0].get("FruInfo", {}).get("@odata.id")
+            if not fru_ref:
+                return
+            fru = self._get_optional(fru_ref)
+            if not fru:
+                return
+        except Exception:
+            return
+        board = fru.get("Board", {})
+        s = result.system
+        if not s.manufacturer:
+            s.manufacturer = board.get("Manufacturer", "").strip()
+        if not s.model:
+            s.model = board.get("ProductName", "").strip()
+        if not s.serial:
+            s.serial = board.get("SerialNumber", "").strip()
 
     def _collect_pcie_devices(self, sysres) -> list[Component]:
         out = []

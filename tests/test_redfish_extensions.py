@@ -199,3 +199,91 @@ def test_ami_detect_vendor_from_vendor_field():
     from netbox_bmc.drivers.redfish import RedfishDriver
     root = {"Vendor": "AMI", "Oem": {"Ami": {}}}
     assert RedfishDriver.detect_vendor(root) == "AMI"
+
+
+def test_ami_fill_system_from_fru():
+    """AmiRedfishDriver fills SystemInfo manufacturer/model/serial from FruInfo Board."""
+    driver = make_ami_driver()
+
+    root = {"Systems": {"@odata.id": "/redfish/v1/Systems"}}
+    systems_coll = {"Members": [{"@odata.id": "/redfish/v1/Systems/Self"}]}
+    sysres = {
+        "@odata.id": "/redfish/v1/Systems/Self",
+        "Manufacturer": " ", "Model": "", "SerialNumber": " ",
+        "PowerState": "On",
+        "FruInfo": {"@odata.id": "/redfish/v1/Systems/Self/FruInfo"},
+        "Links": {},
+        "Processors": {"@odata.id": "/prc"},
+        "Memory": {"@odata.id": "/mem"},
+        "Storage": {"@odata.id": "/sto"},
+        "EthernetInterfaces": {"@odata.id": "/eth"},
+    }
+    empty_coll = {"Members": []}
+    fru = {"Board": {"Manufacturer": "ASRockRack", "ProductName": "X570D4U",
+                     "SerialNumber": "T80-G2000800568"}}
+
+    def fake_get(path):
+        return root
+
+    def fake_getopt(path):
+        if path == "/redfish/v1/Systems":
+            return systems_coll
+        if path == "/redfish/v1/Systems/Self":
+            return sysres
+        if path in ("/prc", "/mem", "/sto", "/eth"):
+            return empty_coll
+        if path == "/redfish/v1/Systems/Self/FruInfo":
+            return fru
+        return None
+
+    with patch.object(driver, "_get", side_effect=fake_get), \
+         patch.object(driver, "_get_optional", side_effect=fake_getopt):
+        result = driver.get_inventory()
+
+    assert result.system.manufacturer == "ASRockRack"
+    assert result.system.model == "X570D4U"
+    assert result.system.serial == "T80-G2000800568"
+
+
+def test_ami_fill_system_from_fru_no_override_existing():
+    """AmiRedfishDriver does not overwrite non-empty SystemInfo fields."""
+    driver = make_ami_driver()
+
+    root = {"Systems": {"@odata.id": "/redfish/v1/Systems"}}
+    systems_coll = {"Members": [{"@odata.id": "/redfish/v1/Systems/Self"}]}
+    sysres = {
+        "@odata.id": "/redfish/v1/Systems/Self",
+        "Manufacturer": "ExistingMfr", "Model": "ExistingModel", "SerialNumber": "ExistingSN",
+        "PowerState": "On",
+        "FruInfo": {"@odata.id": "/redfish/v1/Systems/Self/FruInfo"},
+        "Links": {},
+        "Processors": {"@odata.id": "/prc"},
+        "Memory": {"@odata.id": "/mem"},
+        "Storage": {"@odata.id": "/sto"},
+        "EthernetInterfaces": {"@odata.id": "/eth"},
+    }
+    empty_coll = {"Members": []}
+    fru = {"Board": {"Manufacturer": "ASRockRack", "ProductName": "X570D4U",
+                     "SerialNumber": "T80-G2000800568"}}
+
+    def fake_get(path):
+        return root
+
+    def fake_getopt(path):
+        if path == "/redfish/v1/Systems":
+            return systems_coll
+        if path == "/redfish/v1/Systems/Self":
+            return sysres
+        if path in ("/prc", "/mem", "/sto", "/eth"):
+            return empty_coll
+        if path == "/redfish/v1/Systems/Self/FruInfo":
+            return fru
+        return None
+
+    with patch.object(driver, "_get", side_effect=fake_get), \
+         patch.object(driver, "_get_optional", side_effect=fake_getopt):
+        result = driver.get_inventory()
+
+    assert result.system.manufacturer == "ExistingMfr"
+    assert result.system.model == "ExistingModel"
+    assert result.system.serial == "ExistingSN"
