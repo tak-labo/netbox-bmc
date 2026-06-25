@@ -57,8 +57,8 @@ def detect_and_build(address: str, username: str, password: str,
     auto の場合: まず https://<addr>/redfish/v1 を叩き、応答があれば
     Redfish、なければ IPMI へフォールバックする。
     """
-    from .redfish import RedfishDriver, probe_redfish, build_redfish_driver
     from .ipmi import IPMIDriver
+    from .redfish import build_redfish_driver, probe_redfish
 
     if protocol == "redfish":
         return build_redfish_driver(address, username, password, **kwargs)

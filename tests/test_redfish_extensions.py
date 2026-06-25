@@ -3,7 +3,8 @@ Tests for Redfish driver PSU and Fan collection.
 
 Tests run against mocked Redfish HTTP responses without a real BMC.
 """
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
+
 from netbox_bmc.drivers.redfish import RedfishDriver
 
 

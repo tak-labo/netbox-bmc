@@ -105,8 +105,8 @@ class RedfishDriver(BaseDriver):
         urllib3.disable_warnings はプロセス全体に副作用を残すので、
         本ドライバの HTTP I/O スコープに限定する。
         """
-        from contextlib import contextmanager
         import warnings
+        from contextlib import contextmanager
 
         @contextmanager
         def _cm():

@@ -1,11 +1,9 @@
-import json
 
 from django.contrib import messages
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.generic import View
-
 from netbox.views import generic
 
 from . import forms, tables
@@ -24,9 +22,9 @@ class BMCEndpointView(generic.ObjectView):
         secrets_available = False
         secret_found = False
         try:
-            from netbox_secrets.models import Secret
-            from django.contrib.contenttypes.models import ContentType
             from dcim.models import Device
+            from django.contrib.contenttypes.models import ContentType
+            from netbox_secrets.models import Secret
             secrets_available = True
             device_ct = ContentType.objects.get_for_model(Device)
             secret_found = Secret.objects.filter(
@@ -67,8 +65,8 @@ class BuildModulesView(View):
             messages.error(request, f"BMC scan failed: {e}")
             return redirect(endpoint.get_absolute_url())
 
-        from .normalizer import normalize
         from .module_sync import compute_diff, entry_to_dict
+        from .normalizer import normalize
 
         firmware = {
             c.name: c.firmware
@@ -150,7 +148,7 @@ class BuildModulesApplyView(View):
         selected_names = set(request.POST.getlist("selected"))
         delete_names = set(request.POST.getlist("delete"))
 
-        from .module_sync import apply_module_sync, apply_firmware_to_device
+        from .module_sync import apply_firmware_to_device, apply_module_sync
         report = apply_module_sync(
             endpoint.device, session_data["entries"], selected_names, delete_names,
         )

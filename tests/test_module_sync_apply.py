@@ -1,15 +1,13 @@
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 
 from netbox_bmc.inventory import Component
 from netbox_bmc.module_sync import (
     DiffEntry,
-    SyncReport,
     _set_module_custom_fields,
     apply_module_sync,
     entry_to_dict,
 )
 from netbox_bmc.normalizer import NormalizedComponent
-
 
 # ---------------------------------------------------------------------------
 # entry_to_dict

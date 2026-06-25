@@ -34,6 +34,7 @@ from django.contrib.contenttypes.models import ContentType
 
 if TYPE_CHECKING:
     from django.http import HttpRequest
+
     from .models import BMCEndpoint
 
 logger = logging.getLogger("netbox_bmc.credentials")
@@ -48,8 +49,8 @@ class Credential:
     source: str  # "netbox_secrets" | "plaintext_fallback"
 
 
-def get_credential(endpoint: "BMCEndpoint",
-                   request: "HttpRequest | None" = None) -> Credential:
+def get_credential(endpoint: BMCEndpoint,
+                   request: HttpRequest | None = None) -> Credential:
     """
     BMCEndpoint に紐づく認証情報を取得して返す。
 
@@ -93,12 +94,12 @@ class _SecretNotFound(Exception):
     pass
 
 
-def _get_from_secrets(endpoint: "BMCEndpoint",
-                      request: "HttpRequest | None") -> Credential:
+def _get_from_secrets(endpoint: BMCEndpoint,
+                      request: HttpRequest | None) -> Credential:
     try:
-        from netbox_secrets.models import Secret, SecretRole, UserKey
+        from netbox_secrets.models import Secret, SecretRole
     except ImportError:
-        raise _SecretsUnavailable
+        raise _SecretsUnavailable from None
 
     device = endpoint.device
     device_ct = ContentType.objects.get_for_model(device)
@@ -129,14 +130,13 @@ def _get_from_secrets(endpoint: "BMCEndpoint",
     )
 
 
-def _resolve_master_key(request: "HttpRequest | None") -> bytes:
+def _resolve_master_key(request: HttpRequest | None) -> bytes:
     """
     master_key (bytes) を返す。
 
     request あり  → Cookie または X-Session-Key ヘッダからセッションキーを取得
     request なし  → サービスアカウント秘密鍵で復号
     """
-    from netbox_secrets.models import UserKey
 
     if request is not None:
         return _master_key_from_request(request)
@@ -158,8 +158,8 @@ def _master_key_from_request(request) -> bytes:
     session_key = base64.b64decode(session_key_b64)
     try:
         uk = UserKey.objects.get(user=request.user)
-    except UserKey.DoesNotExist:
-        raise Exception(f"No UserKey found for user {request.user}")
+    except UserKey.DoesNotExist as e:
+        raise Exception(f"No UserKey found for user {request.user}") from e
 
     master_key = uk.get_master_key(session_key)
     if master_key is None:
@@ -196,8 +196,8 @@ def _master_key_from_service_account() -> bytes:
 
     try:
         uk = UserKey.objects.get(user__username=account)
-    except UserKey.DoesNotExist:
-        raise Exception(f"No UserKey for service account '{account}'")
+    except UserKey.DoesNotExist as e:
+        raise Exception(f"No UserKey for service account '{account}'") from e
 
     # UserKey.get_master_key は秘密鍵PEM文字列を受け付ける
     master_key = uk.get_master_key(private_key=pem)

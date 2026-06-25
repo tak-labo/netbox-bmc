@@ -43,6 +43,7 @@ class NetBoxBMCConfig(PluginConfig):
         冪等にする。初回マイグレーション前など Job テーブル未作成の場合は黙って抜ける。
         """
         import logging
+
         from django.db import DatabaseError
 
         from .jobs import ScheduledInventorySyncJob
@@ -50,9 +51,10 @@ class NetBoxBMCConfig(PluginConfig):
         logger = logging.getLogger("netbox_bmc")
 
         try:
+            from datetime import timedelta
+
             from core.models import Job
             from django.utils import timezone
-            from datetime import timedelta
 
             active = Job.objects.filter(
                 name=ScheduledInventorySyncJob.Meta.name,

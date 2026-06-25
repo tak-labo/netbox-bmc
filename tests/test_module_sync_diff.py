@@ -1,7 +1,8 @@
 from unittest.mock import MagicMock, patch
+
 from netbox_bmc.inventory import Component
-from netbox_bmc.normalizer import NormalizedComponent
 from netbox_bmc.module_sync import compute_diff
+from netbox_bmc.normalizer import NormalizedComponent
 
 
 def _nc(name, serial="S1", part_id="P1", kind="cpu"):

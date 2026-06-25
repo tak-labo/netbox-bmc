@@ -1,7 +1,7 @@
+from dcim.models import Device
 from django import forms
 from netbox.forms import NetBoxModelForm
 from utilities.forms.fields import DynamicModelChoiceField
-from dcim.models import Device
 
 from .models import BMCEndpoint
 

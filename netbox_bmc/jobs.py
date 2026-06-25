@@ -11,8 +11,6 @@ import logging
 
 from netbox.jobs import JobRunner
 
-from .models import BMCEndpoint
-
 logger = logging.getLogger("netbox_bmc.jobs")
 
 

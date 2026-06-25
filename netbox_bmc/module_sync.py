@@ -121,8 +121,8 @@ def _get_profile(kind: str):
 
 
 def _get_manufacturer(name: str):
-    from django.utils.text import slugify
     from dcim.models import Manufacturer
+    from django.utils.text import slugify
     name = name.strip() or "Unknown"
     slug = slugify(name)[:100]
     obj, _ = Manufacturer.objects.get_or_create(slug=slug, defaults={"name": name})
