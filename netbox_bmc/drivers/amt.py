@@ -56,27 +56,46 @@ _POWER_STATE = {
 }
 
 AMT_DEFAULT_PORT = 16993
+AMT_HTTP_PORT = 16992
+
+_IDENTIFY_BODY = "<wsmid:Identify/>"
+_IDENTIFY_URI = "http://schemas.dmtf.org/wbem/wsman/identity/1/wsmanidentity.xsd"
 
 
-def probe_amt(address: str, timeout: int = 5, verify_ssl: bool = False) -> bool:
-    """AMT WS-MAN の存在確認。Identify リクエストに応答するかを確認する。"""
+def _probe_url(url: str, timeout: int, verify: bool) -> bool:
+    import warnings
     try:
-        import warnings
         with warnings.catch_warnings():
-            if not verify_ssl:
+            if not verify:
                 warnings.simplefilter("ignore", urllib3.exceptions.InsecureRequestWarning)
             r = requests.post(
-                f"https://{address}:{AMT_DEFAULT_PORT}/wsman",
-                data=_build_envelope(_ACTION_IDENTIFY,
-                                     "http://schemas.dmtf.org/wbem/wsman/identity/1/wsmanidentity.xsd",
-                                     "<wsmid:Identify/>"),
+                url,
+                data=_build_envelope(_ACTION_IDENTIFY, _IDENTIFY_URI, _IDENTIFY_BODY),
                 headers={"Content-Type": "application/soap+xml;charset=UTF-8"},
                 timeout=timeout,
-                verify=verify_ssl,
+                verify=verify,
             )
         return r.status_code in (200, 401) and "wsman" in r.text.lower()
     except requests.RequestException:
         return False
+
+
+def probe_amt(address: str, timeout: int = 5, verify_ssl: bool = False) -> bool:
+    """AMT WS-MAN の存在確認。HTTPS (16993) → HTTP (16992) の順で probe する。"""
+    return (
+        _probe_url(f"https://{address}:{AMT_DEFAULT_PORT}/wsman", timeout, verify_ssl)
+        or _probe_url(f"http://{address}:{AMT_HTTP_PORT}/wsman", timeout, verify_ssl)
+    )
+
+
+def _detect_scheme_and_port(address: str, timeout: int = 5,
+                             verify_ssl: bool = False) -> tuple[str, int]:
+    """接続可能なスキームとポートを返す。デフォルトは https:16993。"""
+    if _probe_url(f"https://{address}:{AMT_DEFAULT_PORT}/wsman", timeout, verify_ssl):
+        return "https", AMT_DEFAULT_PORT
+    if _probe_url(f"http://{address}:{AMT_HTTP_PORT}/wsman", timeout, verify_ssl):
+        return "http", AMT_HTTP_PORT
+    return "https", AMT_DEFAULT_PORT
 
 
 def _build_envelope(action: str, resource_uri: str, body: str,
@@ -128,10 +147,17 @@ class IntelAmtDriver(BaseDriver):
     def __init__(self, address: str, username: str, password: str,
                  port: int | None = None, verify_ssl: bool = False,
                  timeout: int = 15):
+        # port 未指定時はプローブして HTTP/HTTPS を自動選択
+        if port:
+            scheme = "http" if port == AMT_HTTP_PORT else "https"
+            resolved_port = port
+        else:
+            scheme, resolved_port = _detect_scheme_and_port(address, timeout=5,
+                                                             verify_ssl=verify_ssl)
         super().__init__(address, username, password,
-                         port=port or self.DEFAULT_PORT,
+                         port=resolved_port,
                          verify_ssl=verify_ssl, timeout=timeout)
-        self._endpoint = f"https://{self.address}:{self.port}/wsman"
+        self._endpoint = f"{scheme}://{self.address}:{self.port}/wsman"
         self._session = requests.Session()
         self._session.auth = HTTPDigestAuth(self.username, self.password)
         self._session.verify = self.verify_ssl
@@ -297,7 +323,12 @@ class IntelAmtDriver(BaseDriver):
         for item in items:
             tag = _xml_text(item, "Tag", ns) or _xml_text(item, "DeviceLocator", ns) or "DIMM"
             cap_bytes = _xml_text(item, "Capacity", ns)
-            speed = _xml_text(item, "Speed", ns)
+            # Speed=0 の場合は ConfiguredMemoryClockSpeed / MaxMemorySpeed を使う
+            _speed_raw = _xml_text(item, "Speed", ns)
+            speed = (_speed_raw if _speed_raw and _speed_raw != "0" else None) or (
+                _xml_text(item, "ConfiguredMemoryClockSpeed", ns)
+                or _xml_text(item, "MaxMemorySpeed", ns)
+            )
             part = _xml_text(item, "PartNumber", ns)
             serial = _xml_text(item, "SerialNumber", ns)
             mfr = _xml_text(item, "Manufacturer", ns)
