@@ -7,6 +7,7 @@ from netbox.models.features import JobsMixin
 class Protocol(models.TextChoices):
     AUTO = "auto", "Auto-detect"
     REDFISH = "redfish", "Redfish"
+    WSMAN = "wsman", "WS-MAN (Intel AMT)"
     IPMI = "ipmi", "IPMI"
 
 
