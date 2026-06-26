@@ -30,20 +30,22 @@ POWER_ACTION_MAP = {
 }
 
 
-def probe_redfish(address: str, timeout: int = 5, verify_ssl: bool = False) -> bool:
+def probe_redfish(address: str, port: int | None = None,
+                  timeout: int = 5, verify_ssl: bool = False) -> bool:
     """Redfish サービスの存在確認。
 
     `/redfish/v1` は Redfish 仕様で固定の ServiceRoot URI なので直書き許容。
     配下のリソース URI は ServiceRoot のリンクを辿って解決する。
     """
     import warnings
+    base = f"https://{address}:{port}" if port else f"https://{address}"
     try:
         with warnings.catch_warnings():
             if not verify_ssl:
                 warnings.simplefilter(
                     "ignore", urllib3.exceptions.InsecureRequestWarning,
                 )
-            r = requests.get(f"https://{address}/redfish/v1",
+            r = requests.get(f"{base}/redfish/v1",
                              timeout=timeout, verify=verify_ssl)
         return r.status_code == 200 and "redfish" in r.text.lower()
     except requests.RequestException:

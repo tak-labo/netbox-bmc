@@ -57,6 +57,7 @@ def detect_and_build(address: str, username: str, password: str,
     auto の場合: まず https://<addr>/redfish/v1 を叩き、応答があれば
     Redfish、なければ IPMI へフォールバックする。
     """
+    from .amt import IntelAmtDriver, probe_amt
     from .ipmi import IPMIDriver
     from .redfish import build_redfish_driver, probe_redfish
 
@@ -64,8 +65,15 @@ def detect_and_build(address: str, username: str, password: str,
         return build_redfish_driver(address, username, password, **kwargs)
     if protocol == "ipmi":
         return IPMIDriver(address, username, password, **kwargs)
+    if protocol == "wsman":
+        return IntelAmtDriver(address, username, password, **kwargs)
 
     # auto
-    if probe_redfish(address, timeout=5, verify_ssl=kwargs.get("verify_ssl", False)):
+    port = kwargs.get("port")
+    verify_ssl = kwargs.get("verify_ssl", False)
+    if probe_redfish(address, port=port, timeout=5, verify_ssl=verify_ssl):
         return build_redfish_driver(address, username, password, **kwargs)
+    # ポート未指定のとき AMT を試みる (AMT は 16993 固定)
+    if not port and probe_amt(address, timeout=5, verify_ssl=verify_ssl):
+        return IntelAmtDriver(address, username, password, **kwargs)
     return IPMIDriver(address, username, password, **kwargs)

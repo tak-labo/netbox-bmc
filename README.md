@@ -14,9 +14,10 @@ Inventory sync and power control via Redfish & IPMI.
 | Protocol | Vendors |
 |---|---|
 | Redfish | Dell iDRAC, HPE iLO, Lenovo XCC, Supermicro, AMI, Generic |
+| WS-MAN | Intel AMT (vPro) |
 | IPMI | Fallback for any IPMI-capable BMC |
 
-Protocol is auto-detected: probes `/redfish/v1` first, falls back to IPMI on failure.
+Protocol is auto-detected: probes `/redfish/v1` first, then WS-MAN port 16993 (Intel AMT), falls back to IPMI.
 
 ## Tested Hardware
 
@@ -28,6 +29,7 @@ Protocol is auto-detected: probes `/redfish/v1` first, falls back to IPMI on fai
 | Lenovo | ThinkSystem | XCC2 / XCC3 | Redfish | Expected to work |
 | Supermicro | X12 / X13 | BMC | Redfish | Expected to work |
 | AMI | ASMB-based servers | AMI Redfish Server | Redfish | Expected to work |
+| Intel | vPro-enabled desktops/workstations | AMT 6.0+ | WS-MAN | Expected to work |
 | Generic | — | Any IPMI-capable BMC | IPMI | Expected to work (fallback) |
 
 ## Features
@@ -180,6 +182,18 @@ Generic Redfish driver is used. Supermicro BMC firmware varies significantly; be
 ### AMI (American Megatrends)
 
 AMI Redfish Server (detected via `Vendor: "AMI"` in ServiceRoot). PCIe devices are exposed under `Chassis/PCIeDevices` rather than `Systems/PCIeDevices`; the AMI subclass driver handles this automatically. Hardware inventory (CPU, Memory) populates only when the host is powered on.
+
+### Intel AMT (Active Management Technology)
+
+Intel AMT is built into vPro-enabled CPUs (6th gen+). Accessed via WS-MAN (SOAP/XML over HTTPS on port 16993) with HTTP Digest authentication.
+
+Auto-detection: if Redfish is unavailable, `detect_and_build()` probes port 16993 with a WS-MAN `Identify` request. If AMT responds, `IntelAmtDriver` is selected; otherwise falls back to IPMI.
+
+To force AMT: set `protocol = "wsman"` on the `BMCEndpoint`.
+
+Collected: CPU (CIM_Processor), Memory (CIM_PhysicalMemory), AMT firmware version (WS-MAN Identity). Storage and PCIe are not available via AMT WS-MAN.
+
+AMT must be provisioned and the management port must be reachable (not firewalled). AMT 5.x and below are not tested.
 
 ## Development
 

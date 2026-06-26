@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "netbox-bmc"
-version = "0.4.3"
+version = "0.4.4"
 authors = [{name = "tak-labo"}]
 description = "Unified out-of-band management for NetBox: Redfish & IPMI inventory sync, power control, console access"
 readme = "README.md"

@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.4.4] - 2026-06-26
+
+- Add Intel AMT (Active Management Technology) support via WS-MAN (SOAP/XML over HTTPS port 16993)
+  - `IntelAmtDriver`: CPU via `CIM_Processor`, Memory via `CIM_PhysicalMemory`, AMT firmware version via WS-MAN Identity
+  - Power control: on / off / soft / cycle / reset via `CIM_PowerManagementService`
+  - Auto-detection: `detect_and_build()` probes port 16993 after Redfish fails (before IPMI fallback)
+  - `protocol = "wsman"` forces AMT driver on `BMCEndpoint`
+- `probe_redfish()` now accepts optional `port` argument for non-standard Redfish ports
+- Fix IPMI driver `Board *` field fallback for ASRockRack and similar boards (included in 0.4.4)
+
 ## [0.4.3] - 2026-06-25
 
 - Add `detected_serial` field to `BMCEndpoint` — stores system serial number after each scan
