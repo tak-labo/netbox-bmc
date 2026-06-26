@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.4.7] - 2026-06-27
+
+- Fix: module sync errors (Skipped entries) now shown as warning messages in UI
+
 ## [0.4.6] - 2026-06-27
 
 - Add HTTP (port 16992) support for Intel AMT — auto-detects HTTPS:16993 then HTTP:16992
