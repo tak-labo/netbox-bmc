@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.4.5] - 2026-06-27
+
+- Fix: `__version__` is now read from package metadata (`importlib.metadata`) instead of a hardcoded string — prevents version mismatch when only `pyproject.toml` is updated
+
 ## [0.4.4] - 2026-06-26
 
 - Add Intel AMT (Active Management Technology) support via WS-MAN (SOAP/XML over HTTPS port 16993)
