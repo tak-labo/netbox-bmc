@@ -168,6 +168,8 @@ class BuildModulesApplyView(View):
             f"Modules applied: {report.summary()}"
             + (f", firmware entries updated: {fw_count}" if fw_count else ""),
         )
+        for msg in report.messages:
+            messages.warning(request, msg)
         return redirect(endpoint.get_absolute_url())
 
 
