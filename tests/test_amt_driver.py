@@ -5,7 +5,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from netbox_bmc.drivers.amt import (
-    AMT_DEFAULT_PORT,
     IntelAmtDriver,
     _build_envelope,
     _parse_items,
