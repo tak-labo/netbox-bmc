@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.8] - 2026-06-27
+
+- AMT driver: `_collect_system()` now reads serial/model/manufacturer from `CIM_Chassis` (was `CIM_ComputerSystemPackage` which returns empty on AMT 12.0)
+- AMT driver: add `_collect_drives()` via `CIM_MediaAccessDevice` (size only; model/serial not exposed by WS-MAN in AMT 12.0)
+- AMT driver: add `_collect_fans()` via `CIM_Fan`
+- AMT driver: add `_collect_bios()` via `CIM_BIOSElement` (BIOS firmware version)
+
 ## [0.4.7] - 2026-06-27
 
 - Fix: module sync errors (Skipped entries) now shown as warning messages in UI

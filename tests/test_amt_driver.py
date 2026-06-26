@@ -144,7 +144,7 @@ def test_probe_amt_returns_false_on_404():
 
 
 # ---------------------------------------------------------------------------
-# get_inventory — CPU + Memory + Firmware
+# get_inventory — full inventory
 # ---------------------------------------------------------------------------
 
 _CPU_XML = (
@@ -169,53 +169,68 @@ _MEM_XML = (
     f"</p:CIM_PhysicalMemory>"
 )
 
+_CHASSIS_XML = (
+    f'<p:CIM_Chassis xmlns:p="{_CIM}CIM_Chassis">'
+    f"<p:Manufacturer>Dell Inc.</p:Manufacturer>"
+    f"<p:Model>OptiPlex 7060</p:Model>"
+    f"<p:SerialNumber>HCJT0W2</p:SerialNumber>"
+    f"</p:CIM_Chassis>"
+)
 
-def _make_fake_post(*action_responses: tuple[str, str]):
-    """action キーワードでレスポンスを振り分ける fake_post を返す。"""
-    mapping = {key: ET.fromstring(xml) for key, xml in action_responses}
+_DRIVE_XML = (
+    f'<p:CIM_MediaAccessDevice xmlns:p="{_CIM}CIM_MediaAccessDevice">'
+    f"<p:DeviceID>MEDIA DEV 0</p:DeviceID>"
+    f"<p:MaxMediaSize>512110190</p:MaxMediaSize>"
+    f"</p:CIM_MediaAccessDevice>"
+)
 
-    def fake_post(self, action, resource_uri, body):
-        for key, elem in mapping.items():
-            if key in action or key in resource_uri:
-                return elem
-        # フォールバック: EndOfSequence 付き空 Pull
-        return ET.fromstring(_make_pull_response("Unknown", "", end=True))
+_FAN_XML = (
+    f'<p:CIM_Fan xmlns:p="{_CIM}CIM_Fan">'
+    f"<p:DeviceID>Fan 0</p:DeviceID>"
+    f"</p:CIM_Fan>"
+)
 
-    return fake_post
+_BIOS_XML = (
+    f'<p:CIM_BIOSElement xmlns:p="{_CIM}CIM_BIOSElement">'
+    f"<p:Version>1.32.0</p:Version>"
+    f"<p:Manufacturer>Dell Inc.</p:Manufacturer>"
+    f"</p:CIM_BIOSElement>"
+)
+
+
+def _full_inventory_fake_post(action, resource_uri, body):
+    """全 CIM クラスに対応する fake_post (staticmethod 用)。"""
+    enum_resp = _make_enumerate_response("ctx-1")
+    if "Identify" in action:
+        return ET.fromstring(_make_identify_response())
+    if action.split("/")[-1] == "Enumerate":
+        return ET.fromstring(enum_resp)
+    # Pull — resource_uri で振り分け
+    dispatch = {
+        "CIM_Chassis": _CHASSIS_XML,
+        "CIM_Processor": _CPU_XML,
+        "CIM_PhysicalMemory": _MEM_XML,
+        "CIM_MediaAccessDevice": _DRIVE_XML,
+        "CIM_Fan": _FAN_XML,
+        "CIM_BIOSElement": _BIOS_XML,
+    }
+    for cls, xml in dispatch.items():
+        if cls in resource_uri:
+            return ET.fromstring(_make_pull_response(cls, xml, end=True))
+    return ET.fromstring(_make_pull_response("Unknown", "", end=True))
 
 
 def test_get_inventory_cpu_and_memory():
     driver = make_driver()
 
-    # _enumerate の Enumerate→Pull の 2 コールに対応するため、
-    # resource_uri で振り分ける専用 fake_post を使う。
-    _IDENTIFY = "Identify"
-    _ENUM_CPU  = "Enumerate"   # Enumerate は resource_uri で区別
-    _PULL_CPU  = "Pull"
-
-    sys_empty_pull = _make_pull_response("CIM_ComputerSystemPackage", "", end=True)
-    cpu_pull       = _make_pull_response("CIM_Processor", _CPU_XML, end=True)
-    mem_pull       = _make_pull_response("CIM_PhysicalMemory", _MEM_XML, end=True)
-    enum_resp      = _make_enumerate_response("ctx-1")
-
-    def fake_post(self, action, resource_uri, body):
-        if "Identify" in action:
-            return ET.fromstring(_make_identify_response())
-        action_tail = action.split("/")[-1]
-        if action_tail == "Enumerate":
-            return ET.fromstring(enum_resp)
-        # Pull — resource_uri で振り分け
-        if "CIM_Processor" in resource_uri:
-            return ET.fromstring(cpu_pull)
-        if "CIM_PhysicalMemory" in resource_uri:
-            return ET.fromstring(mem_pull)
-        return ET.fromstring(sys_empty_pull)
-
-    with patch.object(IntelAmtDriver, "_post", fake_post):
+    with patch.object(IntelAmtDriver, "_post", lambda self, *a, **kw: _full_inventory_fake_post(*a, **kw)):
         result = driver.get_inventory()
 
     assert result.vendor == "Intel AMT"
     assert result.protocol == "wsman"
+    assert result.system.serial == "HCJT0W2"
+    assert result.system.model == "OptiPlex 7060"
+    assert result.system.manufacturer == "Dell Inc."
 
     cpu_components = [c for c in result.components if c.kind == "cpu"]
     assert len(cpu_components) == 1
@@ -232,9 +247,19 @@ def test_get_inventory_cpu_and_memory():
     assert mem.description == "16GB 3200MHz"
     assert mem.serial == "AABBCCDD"
 
+    drive_components = [c for c in result.components if c.kind == "drive"]
+    assert len(drive_components) == 1
+    assert drive_components[0].name == "MEDIA DEV 0"
+    assert "488GB" in drive_components[0].description
+
+    fan_components = [c for c in result.components if c.kind == "fan"]
+    assert len(fan_components) == 1
+    assert fan_components[0].name == "Fan 0"
+
     fw_components = [c for c in result.components if c.kind == "firmware"]
-    assert len(fw_components) == 1
-    assert fw_components[0].firmware == "12.0.45"
+    # AMT firmware + BIOS firmware
+    assert any(c.firmware == "12.0.45" and c.name == "AMT" for c in fw_components)
+    assert any(c.firmware == "1.32.0" and c.name == "BIOS" for c in fw_components)
 
 
 def test_get_inventory_graceful_on_enumerate_error():

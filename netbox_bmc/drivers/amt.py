@@ -250,6 +250,9 @@ class IntelAmtDriver(BaseDriver):
         components: list[Component] = []
         components += self._collect_processors()
         components += self._collect_memory()
+        components += self._collect_drives()
+        components += self._collect_fans()
+        components += self._collect_bios()
         if identity.get("product_version"):
             components.append(Component(
                 kind="firmware",
@@ -267,15 +270,18 @@ class IntelAmtDriver(BaseDriver):
         )
 
     def _collect_system(self) -> SystemInfo:
+        # CIM_Chassis: SerialNumber, Model, Manufacturer が AMT 12 でも取得可能
         try:
-            items = self._enumerate("CIM_ComputerSystemPackage")
+            items = self._enumerate("CIM_Chassis")
         except BMCError:
             return SystemInfo()
+        ns = f"{_CIM}CIM_Chassis"
         for item in items:
-            ns = f"{_CIM}CIM_ComputerSystemPackage"
-            mfr = _xml_text(item, "Antecedent", ns) or ""
-            # フォールバック: 製造元は Processor から取る
-            return SystemInfo(manufacturer=mfr)
+            return SystemInfo(
+                manufacturer=_xml_text(item, "Manufacturer", ns),
+                model=_xml_text(item, "Model", ns),
+                serial=_xml_text(item, "SerialNumber", ns),
+            )
         return SystemInfo()
 
     def _collect_processors(self) -> list[Component]:
@@ -346,6 +352,67 @@ class IntelAmtDriver(BaseDriver):
                 extra={"capacity_mib": cap_gb * 1024 if cap_gb else 0},
                 source_path=self._endpoint,
             ))
+        return out
+
+    def _collect_drives(self) -> list[Component]:
+        # AMT 12.0 ではモデル名・シリアルは WS-MAN に公開されない。
+        # CIM_MediaAccessDevice から MaxMediaSize (KB) のみ取得する。
+        out = []
+        try:
+            items = self._enumerate("CIM_MediaAccessDevice")
+        except BMCError:
+            return out
+        ns = f"{_CIM}CIM_MediaAccessDevice"
+        for idx, item in enumerate(items):
+            dev_id = _xml_text(item, "DeviceID", ns) or f"MEDIA DEV {idx}"
+            size_kb = _xml_text(item, "MaxMediaSize", ns)
+            size_gb = int(size_kb) // (1024 * 1024) if size_kb else 0
+            desc = f"{size_gb}GB" if size_gb else ""
+            out.append(Component(
+                kind="drive",
+                name=dev_id,
+                description=desc,
+                extra={"size_gb": size_gb},
+                source_path=self._endpoint,
+            ))
+        return out
+
+    def _collect_fans(self) -> list[Component]:
+        out = []
+        try:
+            items = self._enumerate("CIM_Fan")
+        except BMCError:
+            return out
+        ns = f"{_CIM}CIM_Fan"
+        for idx, item in enumerate(items):
+            name = _xml_text(item, "DeviceID", ns) or _xml_text(item, "Name", ns) or f"Fan {idx}"
+            out.append(Component(
+                kind="fan",
+                name=name,
+                source_path=self._endpoint,
+            ))
+        return out
+
+    def _collect_bios(self) -> list[Component]:
+        out = []
+        try:
+            items = self._enumerate("CIM_BIOSElement")
+        except BMCError:
+            return out
+        ns = f"{_CIM}CIM_BIOSElement"
+        for item in items:
+            version = _xml_text(item, "Version", ns)
+            mfr = _xml_text(item, "Manufacturer", ns)
+            if version:
+                out.append(Component(
+                    kind="firmware",
+                    name="BIOS",
+                    manufacturer=mfr,
+                    description="System BIOS",
+                    firmware=version,
+                    source_path=self._endpoint,
+                ))
+            break
         return out
 
     # --- 電源操作 ------------------------------------------------------------
