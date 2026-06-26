@@ -1,6 +1,11 @@
+from importlib.metadata import version
+
 from netbox.plugins import PluginConfig
 
-__version__ = "0.4.3"
+try:
+    __version__ = version("netbox-bmc")
+except Exception:
+    __version__ = "unknown"
 __author__ = "tak-labo"
 __email__ = ""
 
