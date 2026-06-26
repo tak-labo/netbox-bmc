@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.4.6] - 2026-06-27
+
+- Add HTTP (port 16992) support for Intel AMT — auto-detects HTTPS:16993 then HTTP:16992
+- Add WS-MAN to Protocol choices for explicit selection on BMCEndpoint
+- Fix memory speed: fall back to ConfiguredMemoryClockSpeed when Speed=0
+
 ## [0.4.5] - 2026-06-27
 
 - Fix: `__version__` is now read from package metadata (`importlib.metadata`) instead of a hardcoded string — prevents version mismatch when only `pyproject.toml` is updated
