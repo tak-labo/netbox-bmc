@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.4.11] - 2026-06-27
+
+- AMT driver: scrape `hw-disk.htm` to retrieve disk Model and Serial Number (not available via WS-MAN in AMT 12.0); falls back to `CIM_MediaAccessDevice` (size-only)
+- AMT driver: HTML fallback for system info (`hw-sys.htm`), CPU (`hw-proc.htm`), and memory (`hw-mem.htm`) when WS-MAN returns empty results
+
 ## [0.4.10] - 2026-06-27
 
 - Add Firmware to module preview kind filters, default off
