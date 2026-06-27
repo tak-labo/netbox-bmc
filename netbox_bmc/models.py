@@ -16,7 +16,11 @@ class BMCEndpoint(JobsMixin, NetBoxModel):
     device = models.OneToOneField(
         to="dcim.Device", on_delete=models.CASCADE, related_name="bmc_endpoint",
     )
-    address = models.CharField(max_length=255, help_text="BMC の IP / FQDN")
+    ip_address = models.ForeignKey(
+        to="ipam.IPAddress", on_delete=models.PROTECT,
+        related_name="bmc_endpoints",
+        help_text="Device に割り当てられた BMC 管理 IP",
+    )
     port = models.PositiveIntegerField(blank=True, null=True)
     protocol = models.CharField(
         max_length=16, choices=Protocol.choices, default=Protocol.AUTO,
@@ -50,7 +54,7 @@ class BMCEndpoint(JobsMixin, NetBoxModel):
         verbose_name = "BMC endpoint"
 
     def __str__(self):
-        return f"{self.device} ({self.address})"
+        return f"{self.device} ({self.ip_address})"
 
     def get_absolute_url(self):
         return reverse("plugins:netbox_bmc:bmcendpoint", args=[self.pk])
@@ -66,8 +70,10 @@ class BMCEndpoint(JobsMixin, NetBoxModel):
         from .drivers.base import detect_and_build
 
         cred = get_credential(self, request=request)
+        # IPAddress.address is a netaddr.IPNetwork; .ip gives the host part
+        address = str(self.ip_address.address.ip)
         return detect_and_build(
-            self.address, cred.username, cred.password,
+            address, cred.username, cred.password,
             protocol=self.protocol, port=self.port,
             verify_ssl=self.verify_ssl,
         )
