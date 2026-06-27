@@ -715,6 +715,10 @@ class IntelAmtDriver(BaseDriver):
             f'<wsa:Address>{_ANON}</wsa:Address>'
             f'<wsa:ReferenceParameters>'
             f'<wsman:ResourceURI>{_CIM}CIM_ComputerSystem</wsman:ResourceURI>'
+            f'<wsman:SelectorSet>'
+            f'<wsman:Selector Name="CreationClassName">CIM_ComputerSystem</wsman:Selector>'
+            f'<wsman:Selector Name="Name">ManagedSystem</wsman:Selector>'
+            f'</wsman:SelectorSet>'
             f'</wsa:ReferenceParameters>'
             f'</p:ManagedElement>'
             f"</p:RequestPowerStateChange_INPUT>"
