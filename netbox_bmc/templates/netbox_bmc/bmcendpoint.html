@@ -11,8 +11,6 @@
     </button>
   </form>
 
-  <span class="ms-2" style="vertical-align:middle;font-size:.9rem;">Power Status: <span id="power-status-text" style="font-weight:bold;">…</span></span>
-
   {% with power_url="plugins:netbox_bmc:bmcendpoint_power" %}
   <div class="btn-group ms-1" role="group">
     <form method="post" action="{% url power_url pk=object.pk %}" class="d-inline">
@@ -128,6 +126,8 @@
             <td>{{ object.detected_protocol|placeholder }}</td></tr>
         <tr><th scope="row">Detected Serial</th>
             <td>{{ object.detected_serial|placeholder }}</td></tr>
+        <tr><th scope="row">Power</th>
+            <td><span id="power-status-text">…</span></td></tr>
         <tr><th scope="row">Last Sync</th>
             <td>{{ object.last_sync|placeholder }}</td></tr>
         <tr><th scope="row">Status</th>
