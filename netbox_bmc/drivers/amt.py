@@ -75,7 +75,10 @@ def _probe_url(url: str, timeout: int, verify: bool) -> bool:
                 timeout=timeout,
                 verify=verify,
             )
-        return r.status_code in (200, 401) and "wsman" in r.text.lower()
+        # 401 = auth required = WS-MAN endpoint confirmed (body may not contain "wsman")
+        if r.status_code == 401:
+            return True
+        return r.status_code == 200 and "wsman" in r.text.lower()
     except requests.RequestException:
         return False
 
