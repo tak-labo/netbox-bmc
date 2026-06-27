@@ -240,7 +240,7 @@ def test_collect_processors_html_fallback():
     assert cpus[0].kind == "cpu"
     assert cpus[0].name == "CPU 0"
     assert "i5-8500T" in cpus[0].part_id
-    assert "4GHz" in cpus[0].description
+    assert "2.1GHz" in cpus[0].description  # ベースクロック (@ 2.10GHz) が反映されること
 
 
 # CPU の WS-MAN 成功 + HTML 補完
@@ -272,6 +272,7 @@ def test_collect_processors_html_supplement():
     assert len(cpus) == 1
     assert "i5-8500T" in cpus[0].part_id
     assert "Intel" in cpus[0].manufacturer
+    assert "2.1GHz" in cpus[0].description  # ベースクロック (@2.10GHz) が反映されること
 
 
 def test_collect_memory_html_fallback():
@@ -339,7 +340,7 @@ def test_probe_amt_returns_false_on_404():
 _CPU_XML = (
     f'<p:CIM_Processor xmlns:p="{_CIM}CIM_Processor">'
     f"<p:DeviceID>CPU 0</p:DeviceID>"
-    f"<p:Name>Intel Core i7-12700</p:Name>"
+    f"<p:Name>Intel(R) Core(TM) i7-12700 CPU @ 2.90GHz</p:Name>"
     f"<p:Manufacturer>Intel Corporation</p:Manufacturer>"
     f"<p:NumberOfCores>12</p:NumberOfCores>"
     f"<p:NumberOfLogicalProcessors>20</p:NumberOfLogicalProcessors>"
@@ -427,7 +428,7 @@ def test_get_inventory_cpu_and_memory():
     assert cpu.name == "CPU 0"
     assert cpu.manufacturer == "Intel Corporation"
     assert "12C" in cpu.description
-    assert "4GHz" in cpu.description
+    assert "2.9GHz" in cpu.description  # ベースクロック (@ 2.90GHz) が反映されること
 
     mem_components = [c for c in result.components if c.kind == "memory"]
     assert len(mem_components) == 1

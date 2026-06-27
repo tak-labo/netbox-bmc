@@ -198,6 +198,17 @@ class _HwPageParser(HTMLParser):
         return out
 
 
+def _base_clock_mhz_from_model(model_name: str) -> int:
+    """モデル名の '@ X.XXGHz' からベースクロックを MHz で返す。見つからなければ 0。"""
+    m = re.search(r'@\s*([\d.]+)\s*GHz', model_name, re.IGNORECASE)
+    return int(float(m.group(1)) * 1000) if m else 0
+
+
+def _fmt_ghz(speed_mhz: int) -> str:
+    """1900 → '1.9GHz', 2100 → '2.1GHz', 3200 → '3.2GHz'"""
+    return f"{speed_mhz / 1000:.2f}".rstrip("0").rstrip(".") + "GHz"
+
+
 def _parse_amt_hw_page(html: str) -> list[dict[str, str]]:
     """hw-*.htm から class=r1 の key-value ペアをリストで返す。
 
@@ -393,16 +404,17 @@ class IntelAmtDriver(BaseDriver):
             name = _xml_text(item, "DeviceID", ns) or _xml_text(item, "Name", ns) or "CPU"
             cores = _xml_text(item, "NumberOfCores", ns)
             threads = _xml_text(item, "NumberOfLogicalProcessors", ns)
-            speed = _xml_text(item, "MaxClockSpeed", ns)
             mfr = _xml_text(item, "Manufacturer", ns)
             model = _xml_text(item, "Name", ns)
+            # ベースクロックはモデル名の "@ X.XXGHz" から取る (MaxClockSpeed はブーストクロック)
+            speed_mhz = _base_clock_mhz_from_model(model)
             desc_parts = []
             if cores:
                 desc_parts.append(f"{cores}C")
             if threads:
                 desc_parts[-1] += f"/{threads}T" if desc_parts else f"{threads}T"
-            if speed:
-                desc_parts.append(f"{int(speed) // 1000}GHz")
+            if speed_mhz:
+                desc_parts.append(_fmt_ghz(speed_mhz))
             out.append(Component(
                 kind="cpu",
                 name=name,
@@ -411,7 +423,7 @@ class IntelAmtDriver(BaseDriver):
                 description=" ".join(desc_parts),
                 extra={
                     "cores": int(cores) if cores else 0,
-                    "speed_mhz": int(speed) if speed else 0,
+                    "speed_mhz": speed_mhz,
                 },
                 source_path=self._endpoint,
             ))
@@ -425,6 +437,13 @@ class IntelAmtDriver(BaseDriver):
                         comp.part_id = p.get("Version", "").strip()
                     if not comp.manufacturer:
                         comp.manufacturer = p.get("Manufacturer", "").strip()
+                    # part_id が補完されたらベースクロックも更新
+                    if not comp.extra.get("speed_mhz") and comp.part_id:
+                        base = _base_clock_mhz_from_model(comp.part_id)
+                        if base:
+                            comp.extra["speed_mhz"] = base
+                            # description の末尾にクロックを追加
+                            comp.description = (comp.description + " " + _fmt_ghz(base)).strip()
         if out:
             return out
         # フォールバック: hw-proc.htm
@@ -434,14 +453,8 @@ class IntelAmtDriver(BaseDriver):
         for idx, proc in enumerate(_parse_amt_hw_page(html)):
             model_name = proc.get("Version", "").strip()
             mfr = proc.get("Manufacturer", "").strip()
-            speed_str = proc.get("Maximum socket speed", "")
-            speed_mhz = 0
-            if speed_str:
-                try:
-                    speed_mhz = int(speed_str.split()[0])
-                except (ValueError, IndexError):
-                    pass
-            desc = f"{speed_mhz // 1000}GHz" if speed_mhz else ""
+            speed_mhz = _base_clock_mhz_from_model(model_name)
+            desc = _fmt_ghz(speed_mhz) if speed_mhz else ""
             out.append(Component(
                 kind="cpu",
                 name=f"CPU {idx}",
