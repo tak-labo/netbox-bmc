@@ -6,7 +6,7 @@ from .models import BMCEndpoint
 
 class BMCEndpointTable(NetBoxTable):
     device = tables.Column(linkify=True)
-    address = tables.Column()
+    ip_address = tables.Column(linkify=True, verbose_name="IP Address")
     protocol = tables.Column()
     detected_vendor = tables.Column(verbose_name="Vendor")
     last_sync = tables.DateTimeColumn()
@@ -15,11 +15,11 @@ class BMCEndpointTable(NetBoxTable):
     class Meta(NetBoxTable.Meta):
         model = BMCEndpoint
         fields = (
-            "pk", "device", "address", "port", "protocol",
+            "pk", "device", "ip_address", "port", "protocol",
             "detected_vendor", "detected_protocol",
             "last_sync", "last_sync_status",
         )
         default_columns = (
-            "device", "address", "protocol",
+            "device", "ip_address", "protocol",
             "detected_vendor", "last_sync", "last_sync_status",
         )
