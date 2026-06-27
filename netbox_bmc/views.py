@@ -110,12 +110,13 @@ class BuildModulesPreviewView(View):
 
         # (kind, label, default_checked)
         KIND_FILTERS = [
-            ("cpu",    "CPU",    True),
-            ("memory", "Memory", True),
-            ("drive",  "Drive",  True),
-            ("psu",    "PSU",    True),
-            ("fan",    "Fan",    False),
-            ("pci",    "PCI",    False),
+            ("cpu",      "CPU",      True),
+            ("memory",   "Memory",   True),
+            ("drive",    "Drive",    True),
+            ("psu",      "PSU",      True),
+            ("fan",      "Fan",      False),
+            ("pci",      "PCI",      False),
+            ("firmware", "Firmware", False),
         ]
         unchecked_kinds = {k for k, _, checked in KIND_FILTERS if not checked}
 
