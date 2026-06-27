@@ -214,6 +214,23 @@ class PowerActionView(View):
         return redirect(endpoint.get_absolute_url())
 
 
+class PowerStatusView(View):
+    """GET: 現在の電源状態を JSON で返す。"""
+
+    def get(self, request, pk):
+        endpoint = get_object_or_404(BMCEndpoint, pk=pk)
+        if not request.user.has_perm("netbox_bmc.view_bmcendpoint"):
+            return JsonResponse({"error": "Permission denied."}, status=403)
+
+        try:
+            with endpoint.get_driver(request=request) as driver:
+                state = driver.get_power_state()
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
+
+        return JsonResponse({"state": state})
+
+
 class FetchRawView(View):
     """Redfish の生 JSON をブラウザに返すデバッグビュー (GET)。"""
 

@@ -14,12 +14,14 @@ from .base import BaseDriver, BMCError
 
 logger = logging.getLogger("netbox_bmc.ipmi")
 
-POWER_ACTION_MAP = {
-    "on": "on",
-    "off": "off",
-    "soft": "softoff",
-    "cycle": "boot",   # pyghmi: off→on
-    "reset": "reset",
+# IPMI Chassis Control command (netfn=0x00, cmd=0x02) data byte values
+# Bypasses pyghmi OEM/SDR init that triggers sorting bugs on some BMC firmware
+_CHASSIS_CTRL = {
+    "on":    0x01,  # Power Up
+    "off":   0x00,  # Power Down
+    "cycle": 0x02,  # Power Cycle
+    "reset": 0x03,  # Hard Reset
+    "soft":  0x05,  # Soft-off via ACPI
 }
 
 
@@ -81,17 +83,27 @@ class IPMIDriver(BaseDriver):
                                protocol=self.protocol)
 
     def get_power_state(self) -> str:
+        # netfn=0x00 cmd=0x01 = Get Chassis Status; avoids OEM/SDR init
         try:
-            return self.cmd.get_power().get("powerstate", "unknown")
+            resp = self.cmd.raw_command(netfn=0, command=1)
+            if "error" in resp:
+                raise BMCError(resp["error"])
+            return "on" if (resp["data"][0] & 1) else "off"
+        except BMCError:
+            raise
         except Exception as e:
             raise BMCError(str(e)) from e
 
     def set_power(self, action: str) -> None:
-        mapped = POWER_ACTION_MAP.get(action)
-        if not mapped:
+        ctrl = _CHASSIS_CTRL.get(action)
+        if ctrl is None:
             raise BMCError(f"Unknown power action: {action}")
         try:
-            self.cmd.set_power(mapped, wait=False)
+            resp = self.cmd.raw_command(netfn=0, command=2, data=[ctrl])
+            if "error" in resp:
+                raise BMCError(f"IPMI power action failed: {resp['error']}")
+        except BMCError:
+            raise
         except Exception as e:
             raise BMCError(f"IPMI power action failed: {e}") from e
 

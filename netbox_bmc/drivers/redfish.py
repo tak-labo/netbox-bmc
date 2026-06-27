@@ -29,6 +29,12 @@ POWER_ACTION_MAP = {
     "reset": "ForceRestart",
 }
 
+# AllowableValues にない場合のフォールバック順
+_POWER_ACTION_FALLBACK: dict[str, list[str]] = {
+    "cycle": ["PowerCycle", "ForceRestart"],
+    "soft":  ["GracefulShutdown", "GracefulRestart"],
+}
+
 
 def probe_redfish(address: str, port: int | None = None,
                   timeout: int = 5, verify_ssl: bool = False) -> bool:
@@ -460,10 +466,17 @@ class RedfishDriver(BaseDriver):
             raise BMCError(f"Unknown power action: {action}")
         root = self._get("/redfish/v1")
         systems = self._collection(root, "Systems")
-        target = (systems[0].get("Actions", {})
-                  .get("#ComputerSystem.Reset", {}).get("target"))
+        reset_info = systems[0].get("Actions", {}).get("#ComputerSystem.Reset", {})
+        target = reset_info.get("target")
         if not target:
             raise BMCError("ComputerSystem.Reset action not found")
+        # AllowableValues があれば対応する値にフォールバック
+        allowable = reset_info.get("ResetType@Redfish.AllowableValues", [])
+        if allowable and reset_type not in allowable:
+            for candidate in _POWER_ACTION_FALLBACK.get(action, []):
+                if candidate in allowable:
+                    reset_type = candidate
+                    break
         with self._suppress_ssl_warnings():
             r = self.session.post(
                 self._url(target),

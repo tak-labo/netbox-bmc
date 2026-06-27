@@ -11,6 +11,10 @@
     </button>
   </form>
 
+  <span id="power-status-badge" class="badge bg-secondary ms-1" style="font-size:.85rem;vertical-align:middle;">
+    <i class="mdi mdi-power"></i> <span id="power-status-text">…</span>
+  </span>
+
   {% with power_url="plugins:netbox_bmc:bmcendpoint_power" %}
   <div class="btn-group ms-1" role="group">
     <form method="post" action="{% url power_url pk=object.pk %}" class="d-inline">
@@ -134,4 +138,38 @@
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block javascript %}
+{{ block.super }}
+<script>
+(function () {
+  const url = "{% url 'plugins:netbox_bmc:bmcendpoint_power_status' pk=object.pk %}";
+  const badge = document.getElementById("power-status-badge");
+  const text  = document.getElementById("power-status-text");
+
+  fetch(url)
+    .then(r => r.json())
+    .then(data => {
+      if (data.error) {
+        text.textContent = "error";
+        badge.className = "badge bg-danger ms-1";
+        return;
+      }
+      const state = (data.state || "unknown").toLowerCase();
+      text.textContent = state;
+      if (state === "on") {
+        badge.className = "badge bg-success ms-1";
+      } else if (state === "off") {
+        badge.className = "badge bg-secondary ms-1";
+      } else {
+        badge.className = "badge bg-warning text-dark ms-1";
+      }
+    })
+    .catch(() => {
+      text.textContent = "unreachable";
+      badge.className = "badge bg-danger ms-1";
+    });
+})();
+</script>
 {% endblock %}
