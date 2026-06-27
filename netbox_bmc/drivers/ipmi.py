@@ -45,29 +45,36 @@ class IPMIDriver(BaseDriver):
     def get_inventory(self) -> InventoryResult:
         system = SystemInfo()
         components: list[Component] = []
-        try:
-            for name, info in self.cmd.get_inventory():
-                if info is None:
-                    continue
-                if name == "System":
-                    system.manufacturer = (info.get("Manufacturer")
-                                           or info.get("Board manufacturer") or "")
-                    system.model = (info.get("Product name")
-                                    or info.get("Board product name") or "")
-                    system.serial = (info.get("Serial Number")
-                                     or info.get("Board serial number") or "")
-                    system.uuid = str(info.get("UUID") or "")
-                else:
-                    components.append(Component(
-                        kind=_guess_kind(name),
-                        name=name,
-                        manufacturer=info.get("Manufacturer", "") or "",
-                        part_id=info.get("Part Number", "")
-                                or info.get("Product name", "") or "",
-                        serial=info.get("Serial Number", "") or "",
-                    ))
-        except Exception as e:
-            raise BMCError(f"IPMI FRU read failed: {e}") from e
+        gen = self.cmd.get_inventory()
+        while True:
+            try:
+                name, info = next(gen)
+            except StopIteration:
+                break
+            except Exception as e:
+                # SDR 読み込みエラー (NotImplementedError / TypeError 等) は
+                # FRU 0 (System) 取得後に発生することが多い。取得済みデータで続行。
+                logger.warning("IPMI inventory partial failure: %s", e)
+                break
+            if info is None:
+                continue
+            if name == "System":
+                system.manufacturer = (info.get("Manufacturer")
+                                       or info.get("Board manufacturer") or "")
+                system.model = (info.get("Product name")
+                                or info.get("Board product name") or "")
+                system.serial = (info.get("Serial Number")
+                                 or info.get("Board serial number") or "")
+                system.uuid = str(info.get("UUID") or "")
+            else:
+                components.append(Component(
+                    kind=_guess_kind(name),
+                    name=name,
+                    manufacturer=info.get("Manufacturer", "") or "",
+                    part_id=info.get("Part Number", "")
+                            or info.get("Product name", "") or "",
+                    serial=info.get("Serial Number", "") or "",
+                ))
 
         return InventoryResult(system=system, components=components,
                                vendor=system.manufacturer or "Unknown",
