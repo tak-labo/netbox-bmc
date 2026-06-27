@@ -2,8 +2,8 @@
 
 ## [0.4.11] - 2026-06-27
 
-- AMT driver: `_collect_drives()` now scrapes `hw-disk.htm` (AMT web UI) to retrieve disk Model and Serial Number — data not available via WS-MAN in AMT 12.0
-- Falls back to `CIM_MediaAccessDevice` (size-only) when the web page is unreachable
+- AMT driver: scrape `hw-disk.htm` to retrieve disk Model and Serial Number (not available via WS-MAN in AMT 12.0); falls back to `CIM_MediaAccessDevice` (size-only)
+- AMT driver: HTML fallback for system info (`hw-sys.htm`), CPU (`hw-proc.htm`), and memory (`hw-mem.htm`) when WS-MAN returns empty results
 
 ## [0.4.10] - 2026-06-27
 

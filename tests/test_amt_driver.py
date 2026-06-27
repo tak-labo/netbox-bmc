@@ -154,6 +154,117 @@ def test_collect_drives_uses_html():
 
 
 # ---------------------------------------------------------------------------
+# HTML fallback: sys / proc / mem
+# ---------------------------------------------------------------------------
+
+_SYS_HTML = """
+<html><body>
+<h2>Platform</h2>
+<table>
+<tr><td class=r1><p>Computer model</p></td><td class=r1>OptiPlex 7060</td></tr>
+<tr><td class=r1><p>Manufacturer</p></td><td class=r1>Dell Inc.</td></tr>
+<tr><td class=r1><p>Serial number</p></td><td class=r1>HCJT0W2</td></tr>
+</table>
+</body></html>
+"""
+
+_PROC_HTML = """
+<html><body>
+<h2 ID=processor>Processor 1</h2>
+<table>
+<tr><td class=r1><p>Manufacturer</p></td><td class=r1>Intel(R) Corporation</td></tr>
+<tr><td class=r1><p>Version</p></td><td class=r1>Intel(R) Core(TM) i5-8500T CPU @ 2.10GHz</td></tr>
+<tr><td class=r1><p>Maximum socket speed</p></td><td class=r1>4200 MHz</td></tr>
+</table>
+</body></html>
+"""
+
+_MEM_HTML = """
+<html><body>
+<h2>Module 1</h2>
+<table>
+<tr><td class=r1><p>Manufacturer</p></td><td class=r1>Kingston</td></tr>
+<tr><td class=r1><p>Serial number</p></td><td class=r1>AABBCCDD</td></tr>
+<tr><td class=r1><p>Size</p></td><td class=r1>8192 MB</td></tr>
+<tr><td class=r1><p>Speed</p></td><td class=r1>2400 MHz</td></tr>
+<tr><td class=r1><p>Part number</p></td><td class=r1>KVR24N17S8/8   </td></tr>
+</table>
+<h2>Module 2</h2>
+<table>
+<tr><td class=r1><p>Manufacturer</p></td><td class=r1>Kingston</td></tr>
+<tr><td class=r1><p>Serial number</p></td><td class=r1>11223344</td></tr>
+<tr><td class=r1><p>Size</p></td><td class=r1>8192 MB</td></tr>
+<tr><td class=r1><p>Speed</p></td><td class=r1>2400 MHz</td></tr>
+<tr><td class=r1><p>Part number</p></td><td class=r1>KVR24N17S8/8   </td></tr>
+</table>
+</body></html>
+"""
+
+
+def test_collect_system_html_fallback():
+    """CIM_Chassis が空のとき hw-sys.htm から SystemInfo を返す。"""
+    from netbox_bmc.drivers.base import BMCError
+
+    driver = make_driver()
+
+    def fake_post(self, action, resource_uri, body):
+        raise BMCError("timeout")
+
+    with (
+        patch.object(IntelAmtDriver, "_post", fake_post),
+        patch.object(IntelAmtDriver, "_fetch_hw_page", return_value=_SYS_HTML),
+    ):
+        info = driver._collect_system()
+    assert info.model == "OptiPlex 7060"
+    assert info.manufacturer == "Dell Inc."
+    assert info.serial == "HCJT0W2"
+
+
+def test_collect_processors_html_fallback():
+    """CIM_Processor が空のとき hw-proc.htm から CPU Component を返す。"""
+    from netbox_bmc.drivers.base import BMCError
+
+    driver = make_driver()
+
+    def fake_post(self, action, resource_uri, body):
+        raise BMCError("timeout")
+
+    with (
+        patch.object(IntelAmtDriver, "_post", fake_post),
+        patch.object(IntelAmtDriver, "_fetch_hw_page", return_value=_PROC_HTML),
+    ):
+        cpus = driver._collect_processors()
+    assert len(cpus) == 1
+    assert cpus[0].kind == "cpu"
+    assert cpus[0].name == "CPU 0"
+    assert "i5-8500T" in cpus[0].part_id
+    assert "4GHz" in cpus[0].description
+
+
+def test_collect_memory_html_fallback():
+    """CIM_PhysicalMemory が空のとき hw-mem.htm からメモリ Component を返す。"""
+    from netbox_bmc.drivers.base import BMCError
+
+    driver = make_driver()
+
+    def fake_post(self, action, resource_uri, body):
+        raise BMCError("timeout")
+
+    with (
+        patch.object(IntelAmtDriver, "_post", fake_post),
+        patch.object(IntelAmtDriver, "_fetch_hw_page", return_value=_MEM_HTML),
+    ):
+        mems = driver._collect_memory()
+    assert len(mems) == 2
+    assert mems[0].name == "Module 1"
+    assert mems[0].serial == "AABBCCDD"
+    assert "8GB" in mems[0].description
+    assert "2400MHz" in mems[0].description
+    assert mems[0].part_id == "KVR24N17S8/8"
+    assert mems[1].serial == "11223344"
+
+
+# ---------------------------------------------------------------------------
 # probe_amt
 # ---------------------------------------------------------------------------
 

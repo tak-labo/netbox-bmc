@@ -361,7 +361,7 @@ class IntelAmtDriver(BaseDriver):
         try:
             items = self._enumerate("CIM_Chassis")
         except BMCError:
-            return SystemInfo()
+            items = []
         ns = f"{_CIM}CIM_Chassis"
         for item in items:
             return SystemInfo(
@@ -369,6 +369,17 @@ class IntelAmtDriver(BaseDriver):
                 model=_xml_text(item, "Model", ns),
                 serial=_xml_text(item, "SerialNumber", ns),
             )
+        # フォールバック: hw-sys.htm (Platform セクション)
+        html = self._fetch_hw_page("hw-sys.htm")
+        if html:
+            sections = _parse_amt_hw_page(html)
+            if sections:
+                p = sections[0]
+                return SystemInfo(
+                    manufacturer=p.get("Manufacturer", "").strip(),
+                    model=p.get("Computer model", "").strip(),
+                    serial=p.get("Serial number", "").strip(),
+                )
         return SystemInfo()
 
     def _collect_processors(self) -> list[Component]:
@@ -376,7 +387,7 @@ class IntelAmtDriver(BaseDriver):
         try:
             items = self._enumerate("CIM_Processor")
         except BMCError:
-            return out
+            items = []
         ns = f"{_CIM}CIM_Processor"
         for item in items:
             name = _xml_text(item, "DeviceID", ns) or _xml_text(item, "Name", ns) or "CPU"
@@ -404,6 +415,32 @@ class IntelAmtDriver(BaseDriver):
                 },
                 source_path=self._endpoint,
             ))
+        if out:
+            return out
+        # フォールバック: hw-proc.htm
+        html = self._fetch_hw_page("hw-proc.htm")
+        if not html:
+            return []
+        for idx, proc in enumerate(_parse_amt_hw_page(html)):
+            model_name = proc.get("Version", "").strip()
+            mfr = proc.get("Manufacturer", "").strip()
+            speed_str = proc.get("Maximum socket speed", "")
+            speed_mhz = 0
+            if speed_str:
+                try:
+                    speed_mhz = int(speed_str.split()[0])
+                except (ValueError, IndexError):
+                    pass
+            desc = f"{speed_mhz // 1000}GHz" if speed_mhz else ""
+            out.append(Component(
+                kind="cpu",
+                name=f"CPU {idx}",
+                manufacturer=mfr,
+                part_id=model_name,
+                description=desc,
+                extra={"speed_mhz": speed_mhz},
+                source_path=self._endpoint,
+            ))
         return out
 
     def _collect_memory(self) -> list[Component]:
@@ -411,7 +448,7 @@ class IntelAmtDriver(BaseDriver):
         try:
             items = self._enumerate("CIM_PhysicalMemory")
         except BMCError:
-            return out
+            items = []
         ns = f"{_CIM}CIM_PhysicalMemory"
         for item in items:
             tag = _xml_text(item, "Tag", ns) or _xml_text(item, "DeviceLocator", ns) or "DIMM"
@@ -437,6 +474,36 @@ class IntelAmtDriver(BaseDriver):
                 serial=serial,
                 description=desc.strip(),
                 extra={"capacity_mib": cap_gb * 1024 if cap_gb else 0},
+                source_path=self._endpoint,
+            ))
+        if out:
+            return out
+        # フォールバック: hw-mem.htm
+        html = self._fetch_hw_page("hw-mem.htm")
+        if not html:
+            return []
+        for idx, mod in enumerate(_parse_amt_hw_page(html)):
+            size_str = mod.get("Size", "")
+            speed_str = mod.get("Speed", "")
+            size_mb = 0
+            if size_str:
+                try:
+                    size_mb = int(size_str.split()[0])
+                except (ValueError, IndexError):
+                    pass
+            size_gb = size_mb // 1024 if size_mb else 0
+            speed_mhz = speed_str.split()[0] if speed_str else ""
+            desc = f"{size_gb}GB" if size_gb else ""
+            if speed_mhz:
+                desc += f" {speed_mhz}MHz"
+            out.append(Component(
+                kind="memory",
+                name=f"Module {idx + 1}",
+                manufacturer=mod.get("Manufacturer", "").strip(),
+                part_id=mod.get("Part number", "").strip(),
+                serial=mod.get("Serial number", "").strip(),
+                description=desc.strip(),
+                extra={"capacity_mib": size_gb * 1024 if size_gb else 0},
                 source_path=self._endpoint,
             ))
         return out
