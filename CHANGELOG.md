@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.4.9] - 2026-06-27
+
+- Fix: AMT driver no longer probes HTTPS:16993 on init when port is unset — defaults to HTTP:16992 immediately, eliminating the 5s timeout delay
+- Fix: `probe_amt()` now tries HTTP:16992 before HTTPS:16993 (more common deployment)
+- Fix: `_probe_url()` treated HTTP 401 as failure when response body lacked "wsman" text — 401 from `/wsman` is now accepted unconditionally as proof of WS-MAN presence (was causing 105s scan time via fallback to HTTPS:16993)
+
 ## [0.4.8] - 2026-06-27
 
 - AMT driver: `_collect_system()` now reads serial/model/manufacturer from `CIM_Chassis` (was `CIM_ComputerSystemPackage` which returns empty on AMT 12.0)

@@ -75,16 +75,19 @@ def _probe_url(url: str, timeout: int, verify: bool) -> bool:
                 timeout=timeout,
                 verify=verify,
             )
-        return r.status_code in (200, 401) and "wsman" in r.text.lower()
+        # 401 = auth required = WS-MAN endpoint confirmed (body may not contain "wsman")
+        if r.status_code == 401:
+            return True
+        return r.status_code == 200 and "wsman" in r.text.lower()
     except requests.RequestException:
         return False
 
 
 def probe_amt(address: str, timeout: int = 5, verify_ssl: bool = False) -> bool:
-    """AMT WS-MAN の存在確認。HTTPS (16993) → HTTP (16992) の順で probe する。"""
+    """AMT WS-MAN の存在確認。HTTP (16992) → HTTPS (16993) の順で probe する。"""
     return (
-        _probe_url(f"https://{address}:{AMT_DEFAULT_PORT}/wsman", timeout, verify_ssl)
-        or _probe_url(f"http://{address}:{AMT_HTTP_PORT}/wsman", timeout, verify_ssl)
+        _probe_url(f"http://{address}:{AMT_HTTP_PORT}/wsman", timeout, verify_ssl)
+        or _probe_url(f"https://{address}:{AMT_DEFAULT_PORT}/wsman", timeout, verify_ssl)
     )
 
 
@@ -147,13 +150,14 @@ class IntelAmtDriver(BaseDriver):
     def __init__(self, address: str, username: str, password: str,
                  port: int | None = None, verify_ssl: bool = False,
                  timeout: int = 15):
-        # port 未指定時はプローブして HTTP/HTTPS を自動選択
+        # port 指定あり → そのまま使う
+        # port 未指定 → HTTP:16992 をデフォルトとして即座に使用（probe しない）
+        # HTTPS:16993 が必要なら port=16993 を明示してください
         if port:
-            scheme = "http" if port == AMT_HTTP_PORT else "https"
+            scheme = "https" if port == AMT_DEFAULT_PORT else "http"
             resolved_port = port
         else:
-            scheme, resolved_port = _detect_scheme_and_port(address, timeout=5,
-                                                             verify_ssl=verify_ssl)
+            scheme, resolved_port = "http", AMT_HTTP_PORT
         super().__init__(address, username, password,
                          port=resolved_port,
                          verify_ssl=verify_ssl, timeout=timeout)
