@@ -13,6 +13,7 @@ from __future__ import annotations
 import logging
 import uuid
 import xml.etree.ElementTree as ET
+from html.parser import HTMLParser
 from typing import TYPE_CHECKING
 
 import requests
@@ -133,6 +134,88 @@ def _xml_text(elem: ET.Element, tag: str, ns: str = _CIM + "CIM_Processor") -> s
     if found is not None and found.text:
         return found.text.strip()
     return ""
+
+
+class _HwPageParser(HTMLParser):
+    """AMT hw-*.htm の class=r1 テーブルから key-value ペアを抽出する。
+
+    各セクション (<h2>) をキーとし、その下の r1 ペアを dict のリストとして返す。
+    """
+
+    def __init__(self):
+        super().__init__()
+        self._in_r1 = False
+        self._buf = ""
+        self._pair: list[str] = []
+        self._section = "__default__"
+        self.sections: dict[str, list[dict[str, str]]] = {}
+        self._current_rows: list[dict[str, str]] = []
+
+    def handle_starttag(self, tag, attrs):
+        cls = dict(attrs).get("class", "")
+        if tag == "h2":
+            self._flush_section()
+        if tag == "td" and cls == "r1":
+            self._in_r1 = True
+            self._buf = ""
+
+    def handle_endtag(self, tag):
+        if tag == "h2":
+            # section name comes from the text accumulated in _buf before h2 ends
+            pass
+        if tag == "td" and self._in_r1:
+            self._in_r1 = False
+            self._pair.append(self._buf.strip())
+            if len(self._pair) == 2:
+                k, v = self._pair
+                k = k.strip()
+                v = v.strip()
+                if k:
+                    self._current_rows.append({k: v})
+                self._pair = []
+
+    def handle_data(self, data):
+        if self._in_r1:
+            self._buf += data
+
+    def _flush_section(self):
+        if self._current_rows:
+            self.sections.setdefault(self._section, []).extend(self._current_rows)
+            self._current_rows = []
+
+    def close(self):
+        self._flush_section()
+        super().close()
+
+    def flat(self) -> dict[str, str]:
+        """全セクションを 1 つの dict にまとめて返す（最初の値優先）。"""
+        out: dict[str, str] = {}
+        for rows in self.sections.values():
+            for row in rows:
+                for k, v in row.items():
+                    out.setdefault(k, v)
+        return out
+
+
+def _parse_amt_hw_page(html: str) -> list[dict[str, str]]:
+    """hw-*.htm から class=r1 の key-value ペアをリストで返す。
+
+    ページ内に複数のセクション（Disk 1 / Disk 2 など）が含まれる場合も
+    各セクションを 1 つの dict にしてリストで返す。
+    """
+    # セクション区切りは <h2> タグ。Disk ページは Disk 1, Disk 2 …
+    import re
+    # h2 タグで分割して各ブロックをパース
+    blocks = re.split(r'<h2[^>]*>', html, flags=re.IGNORECASE)
+    results = []
+    for block in blocks[1:]:  # 最初のブロックはヘッダ前なのでスキップ
+        p = _HwPageParser()
+        p.feed(block)
+        p.close()
+        flat = p.flat()
+        if flat:
+            results.append(flat)
+    return results
 
 
 def _parse_items(root: ET.Element) -> list[ET.Element]:
@@ -358,9 +441,49 @@ class IntelAmtDriver(BaseDriver):
             ))
         return out
 
+    def _fetch_hw_page(self, page: str) -> str:
+        """AMT web UI の hw-*.htm を取得して HTML を返す。失敗時は空文字。"""
+        base = self._endpoint.replace("/wsman", "")
+        try:
+            with self._suppress_ssl_warnings():
+                r = self._session.get(f"{base}/{page}", timeout=self.timeout)
+            return r.text if r.status_code == 200 else ""
+        except requests.RequestException:
+            return ""
+
     def _collect_drives(self) -> list[Component]:
-        # AMT 12.0 ではモデル名・シリアルは WS-MAN に公開されない。
-        # CIM_MediaAccessDevice から MaxMediaSize (KB) のみ取得する。
+        # hw-disk.htm から Model / Serial / Size を取得（WS-MAN では取得不可）
+        html = self._fetch_hw_page("hw-disk.htm")
+        if html:
+            return self._parse_drives_from_html(html)
+        # フォールバック: CIM_MediaAccessDevice からサイズのみ
+        return self._collect_drives_cim()
+
+    def _parse_drives_from_html(self, html: str) -> list[Component]:
+        out = []
+        for idx, disk in enumerate(_parse_amt_hw_page(html)):
+            model = disk.get("Model", "").strip()
+            serial = disk.get("Serial number", "").strip()
+            size_str = disk.get("Size", "")
+            size_mb = 0
+            if size_str:
+                try:
+                    size_mb = int(size_str.split()[0])
+                except (ValueError, IndexError):
+                    pass
+            size_gb = size_mb // 1024 if size_mb else 0
+            desc = f"{size_gb}GB" if size_gb else ""
+            out.append(Component(
+                kind="drive",
+                name=model or f"MEDIA DEV {idx}",
+                serial=serial,
+                description=desc,
+                extra={"size_gb": size_gb},
+                source_path=self._endpoint,
+            ))
+        return out
+
+    def _collect_drives_cim(self) -> list[Component]:
         out = []
         try:
             items = self._enumerate("CIM_MediaAccessDevice")

@@ -7,6 +7,7 @@ import pytest
 from netbox_bmc.drivers.amt import (
     IntelAmtDriver,
     _build_envelope,
+    _parse_amt_hw_page,
     _parse_items,
     _xml_text,
     probe_amt,
@@ -106,6 +107,50 @@ def test_parse_items_returns_children():
 def test_parse_items_no_items_tag():
     items = _parse_items(ET.fromstring("<root/>"))
     assert items == []
+
+
+# ---------------------------------------------------------------------------
+# _parse_amt_hw_page
+# ---------------------------------------------------------------------------
+
+_DISK_HTML = """
+<html><body>
+<h2>Disk 1</h2>
+<table>
+<tr><td class=r1><p>Model</p></td><td class=r1>Samsung SSD 840 PRO Series</td></tr>
+<tr><td class=r1><p>Serial number</p></td><td class=r1>S1AXNSAF513806P</td></tr>
+<tr><td class=r1><p>Size</p></td><td class=r1>488386 MB</td></tr>
+</table>
+<h2>Disk 2</h2>
+<table>
+<tr><td class=r1><p>Model</p></td><td class=r1>Samsung SSD 980 250GB</td></tr>
+<tr><td class=r1><p>Serial number</p></td><td class=r1>S64BNJ0R215887D</td></tr>
+<tr><td class=r1><p>Size</p></td><td class=r1>238475 MB</td></tr>
+</table>
+</body></html>
+"""
+
+
+def test_parse_amt_hw_page_disks():
+    disks = _parse_amt_hw_page(_DISK_HTML)
+    assert len(disks) == 2
+    assert disks[0]["Model"] == "Samsung SSD 840 PRO Series"
+    assert disks[0]["Serial number"] == "S1AXNSAF513806P"
+    assert disks[0]["Size"] == "488386 MB"
+    assert disks[1]["Model"] == "Samsung SSD 980 250GB"
+    assert disks[1]["Serial number"] == "S64BNJ0R215887D"
+
+
+def test_collect_drives_uses_html():
+    driver = make_driver()
+    with patch.object(IntelAmtDriver, "_fetch_hw_page", return_value=_DISK_HTML):
+        drives = driver._collect_drives()
+    assert len(drives) == 2
+    assert drives[0].name == "Samsung SSD 840 PRO Series"
+    assert drives[0].serial == "S1AXNSAF513806P"
+    assert "476GB" in drives[0].description
+    assert drives[1].name == "Samsung SSD 980 250GB"
+    assert drives[1].serial == "S64BNJ0R215887D"
 
 
 # ---------------------------------------------------------------------------
