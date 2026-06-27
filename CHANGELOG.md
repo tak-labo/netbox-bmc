@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.4.10] - 2026-06-27
+
+- Add Firmware to module preview kind filters, default off
+
 ## [0.4.9] - 2026-06-27
 
 - Fix: AMT driver no longer probes HTTPS:16993 on init when port is unset — defaults to HTTP:16992 immediately, eliminating the 5s timeout delay
