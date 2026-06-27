@@ -149,6 +149,8 @@ def test_collect_drives_uses_html():
     assert drives[0].name == "Samsung SSD 840 PRO Series"
     assert drives[0].serial == "S1AXNSAF513806P"
     assert "476GB" in drives[0].description
+    assert drives[0].part_id == "Samsung SSD 840 PRO Series"
+    assert drives[0].manufacturer == "Samsung"
     assert drives[1].name == "Samsung SSD 980 250GB"
     assert drives[1].serial == "S64BNJ0R215887D"
 
