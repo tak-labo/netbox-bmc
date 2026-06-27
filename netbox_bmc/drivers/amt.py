@@ -58,6 +58,15 @@ _POWER_STATE = {
 }
 
 AMT_DEFAULT_PORT = 16993
+
+# CIM_PhysicalMemory.MemoryType 数値 → 文字列型名
+_CIM_MEMORY_TYPE_MAP: dict[str, str] = {
+    "20": "DDR",
+    "21": "DDR2",
+    "24": "DDR3",
+    "26": "DDR4",
+    "34": "DDR5",
+}
 AMT_HTTP_PORT = 16992
 
 _IDENTIFY_BODY = "<wsmid:Identify/>"
@@ -502,13 +511,19 @@ class IntelAmtDriver(BaseDriver):
             )
             part = _xml_text(item, "PartNumber", ns)
             serial = _xml_text(item, "SerialNumber", ns)
-            _mfr = _xml_text(item, "Manufacturer", ns)
-            # JEDEC コード (16 進数のみの長い文字列) は除外
-            mfr = "" if (_mfr and re.fullmatch(r'[0-9A-Fa-f]+', _mfr)) else _mfr
+            mfr = _xml_text(item, "Manufacturer", ns) or ""
             cap_gb = int(cap_bytes) // (1024 ** 3) if cap_bytes else 0
-            desc = f"{cap_gb}GB" if cap_gb else ""
+            speed_mhz = 0
             if speed:
-                desc += f" {speed}MHz"
+                try:
+                    speed_mhz = int(speed)
+                except ValueError:
+                    pass
+            mem_type_raw = _xml_text(item, "MemoryType", ns) or ""
+            mem_type = _CIM_MEMORY_TYPE_MAP.get(mem_type_raw, "")
+            desc = f"{cap_gb}GB" if cap_gb else ""
+            if speed_mhz:
+                desc += f" {speed_mhz}MHz"
             out.append(Component(
                 kind="memory",
                 name=tag,
@@ -516,7 +531,11 @@ class IntelAmtDriver(BaseDriver):
                 part_id=part,
                 serial=serial,
                 description=desc.strip(),
-                extra={"capacity_mib": cap_gb * 1024 if cap_gb else 0},
+                extra={
+                    "capacity_mib": cap_gb * 1024 if cap_gb else 0,
+                    "operating_speed_mhz": speed_mhz,
+                    "memory_device_type": mem_type,
+                },
                 source_path=self._endpoint,
             ))
         if out:
@@ -535,10 +554,16 @@ class IntelAmtDriver(BaseDriver):
                 except (ValueError, IndexError):
                     pass
             size_gb = size_mb // 1024 if size_mb else 0
-            speed_mhz = speed_str.split()[0] if speed_str else ""
+            html_speed_mhz = 0
+            if speed_str:
+                try:
+                    html_speed_mhz = int(speed_str.split()[0])
+                except (ValueError, IndexError):
+                    pass
+            html_mem_type = mod.get("Type", "").strip()
             desc = f"{size_gb}GB" if size_gb else ""
-            if speed_mhz:
-                desc += f" {speed_mhz}MHz"
+            if html_speed_mhz:
+                desc += f" {html_speed_mhz}MHz"
             out.append(Component(
                 kind="memory",
                 name=f"Module {idx + 1}",
@@ -546,7 +571,11 @@ class IntelAmtDriver(BaseDriver):
                 part_id=mod.get("Part number", "").strip(),
                 serial=mod.get("Serial number", "").strip(),
                 description=desc.strip(),
-                extra={"capacity_mib": size_gb * 1024 if size_gb else 0},
+                extra={
+                    "capacity_mib": size_gb * 1024 if size_gb else 0,
+                    "operating_speed_mhz": html_speed_mhz,
+                    "memory_device_type": html_mem_type,
+                },
                 source_path=self._endpoint,
             ))
         return out

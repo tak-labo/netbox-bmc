@@ -189,6 +189,7 @@ _MEM_HTML = """
 <tr><td class=r1><p>Serial number</p></td><td class=r1>AABBCCDD</td></tr>
 <tr><td class=r1><p>Size</p></td><td class=r1>8192 MB</td></tr>
 <tr><td class=r1><p>Speed</p></td><td class=r1>2400 MHz</td></tr>
+<tr><td class=r1><p>Type</p></td><td class=r1>DDR4</td></tr>
 <tr><td class=r1><p>Part number</p></td><td class=r1>KVR24N17S8/8   </td></tr>
 </table>
 <h2>Module 2</h2>
@@ -197,6 +198,7 @@ _MEM_HTML = """
 <tr><td class=r1><p>Serial number</p></td><td class=r1>11223344</td></tr>
 <tr><td class=r1><p>Size</p></td><td class=r1>8192 MB</td></tr>
 <tr><td class=r1><p>Speed</p></td><td class=r1>2400 MHz</td></tr>
+<tr><td class=r1><p>Type</p></td><td class=r1>DDR4</td></tr>
 <tr><td class=r1><p>Part number</p></td><td class=r1>KVR24N17S8/8   </td></tr>
 </table>
 </body></html>
@@ -295,6 +297,8 @@ def test_collect_memory_html_fallback():
     assert "8GB" in mems[0].description
     assert "2400MHz" in mems[0].description
     assert mems[0].part_id == "KVR24N17S8/8"
+    assert mems[0].extra["operating_speed_mhz"] == 2400
+    assert mems[0].extra["memory_device_type"] == "DDR4"
     assert mems[1].serial == "11223344"
 
 
@@ -353,6 +357,7 @@ _MEM_XML = (
     f"<p:Tag>DIMM 0</p:Tag>"
     f"<p:Capacity>{16 * 1024 ** 3}</p:Capacity>"
     f"<p:Speed>3200</p:Speed>"
+    f"<p:MemoryType>26</p:MemoryType>"
     f"<p:PartNumber>KVR32N22D8/16</p:PartNumber>"
     f"<p:SerialNumber>AABBCCDD</p:SerialNumber>"
     f"<p:Manufacturer>Kingston</p:Manufacturer>"
@@ -436,6 +441,8 @@ def test_get_inventory_cpu_and_memory():
     assert mem.name == "DIMM 0"
     assert mem.description == "16GB 3200MHz"
     assert mem.serial == "AABBCCDD"
+    assert mem.extra["operating_speed_mhz"] == 3200
+    assert mem.extra["memory_device_type"] == "DDR4"
 
     drive_components = [c for c in result.components if c.kind == "drive"]
     assert len(drive_components) == 1
