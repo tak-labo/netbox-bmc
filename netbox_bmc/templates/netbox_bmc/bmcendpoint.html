@@ -10,6 +10,45 @@
       <i class="mdi mdi-chip"></i> Build Modules
     </button>
   </form>
+
+  {% with power_url="plugins:netbox_bmc:bmcendpoint_power" %}
+  <div class="btn-group ms-1" role="group">
+    <form method="post" action="{% url power_url pk=object.pk %}" class="d-inline">
+      {% csrf_token %}<input type="hidden" name="action" value="on">
+      <button type="submit" class="btn btn-success btn-sm" title="Power On">
+        <i class="mdi mdi-power"></i> On
+      </button>
+    </form>
+    <form method="post" action="{% url power_url pk=object.pk %}" class="d-inline">
+      {% csrf_token %}<input type="hidden" name="action" value="off">
+      <button type="submit" class="btn btn-danger btn-sm" title="Power Off (Hard)"
+              onclick="return confirm('Hard power off?')">
+        <i class="mdi mdi-power-off"></i> Off
+      </button>
+    </form>
+    <form method="post" action="{% url power_url pk=object.pk %}" class="d-inline">
+      {% csrf_token %}<input type="hidden" name="action" value="soft">
+      <button type="submit" class="btn btn-outline-warning btn-sm" title="Soft Off (ACPI)">
+        <i class="mdi mdi-power-sleep"></i> Soft
+      </button>
+    </form>
+    <form method="post" action="{% url power_url pk=object.pk %}" class="d-inline">
+      {% csrf_token %}<input type="hidden" name="action" value="cycle">
+      <button type="submit" class="btn btn-outline-secondary btn-sm" title="Power Cycle"
+              onclick="return confirm('Power cycle?')">
+        <i class="mdi mdi-restart"></i> Cycle
+      </button>
+    </form>
+    <form method="post" action="{% url power_url pk=object.pk %}" class="d-inline">
+      {% csrf_token %}<input type="hidden" name="action" value="reset">
+      <button type="submit" class="btn btn-outline-secondary btn-sm" title="Reset"
+              onclick="return confirm('Reset?')">
+        <i class="mdi mdi-reload"></i> Reset
+      </button>
+    </form>
+  </div>
+  {% endwith %}
+
   <a href="{% url 'plugins:netbox_bmc:bmcendpoint_raw' pk=object.pk %}?depth=3"
      target="_blank" class="btn btn-outline-secondary ms-1">
     <i class="mdi mdi-code-json"></i> Raw Data
