@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.4.12] - 2026-06-27
+
+- AMT driver: `_parse_drives_from_html` now sets `part_id` (full model name) and `manufacturer` (first word of model name) on drive components
+- Module sync: drive profile now writes `size` (GB) to `attribute_data` alongside `type`
+
 ## [0.4.11] - 2026-06-27
 
 - AMT driver: scrape `hw-disk.htm` to retrieve disk Model and Serial Number (not available via WS-MAN in AMT 12.0); falls back to `CIM_MediaAccessDevice` (size-only)

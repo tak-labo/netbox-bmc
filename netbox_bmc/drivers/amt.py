@@ -540,11 +540,14 @@ class IntelAmtDriver(BaseDriver):
                     pass
             size_gb = size_mb // 1024 if size_mb else 0
             desc = f"{size_gb}GB" if size_gb else ""
+            vendor = model.split()[0] if model else ""
             out.append(Component(
                 kind="drive",
                 name=model or f"MEDIA DEV {idx}",
                 serial=serial,
                 description=desc,
+                part_id=model,
+                manufacturer=vendor,
                 extra={"size_gb": size_gb},
                 source_path=self._endpoint,
             ))

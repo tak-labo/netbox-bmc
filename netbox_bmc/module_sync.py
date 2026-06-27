@@ -150,6 +150,9 @@ def _set_module_type_attributes(module_type, entry: dict) -> None:
             attrs["architecture"] = arch
 
     elif kind == "drive":
+        size_gb = extra.get("size_gb", 0)
+        if size_gb:
+            attrs["size"] = size_gb
         desc = entry.get("description", "").upper()
         if "NVME" in desc:
             attrs["type"] = "NVME"
