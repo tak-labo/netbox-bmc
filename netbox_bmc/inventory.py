@@ -13,6 +13,7 @@ class SystemInfo:
     manufacturer: str = ""
     model: str = ""
     serial: str = ""
+    asset_tag: str = ""
     sku: str = ""           # サービスタグ / 製品番号
     uuid: str = ""
     bios_version: str = ""

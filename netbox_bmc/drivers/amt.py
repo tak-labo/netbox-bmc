@@ -58,6 +58,15 @@ _POWER_STATE = {
 }
 
 AMT_DEFAULT_PORT = 16993
+
+# CIM_PhysicalMemory.MemoryType 数値 → 文字列型名
+_CIM_MEMORY_TYPE_MAP: dict[str, str] = {
+    "20": "DDR",
+    "21": "DDR2",
+    "24": "DDR3",
+    "26": "DDR4",
+    "34": "DDR5",
+}
 AMT_HTTP_PORT = 16992
 
 _IDENTIFY_BODY = "<wsmid:Identify/>"
@@ -196,6 +205,26 @@ class _HwPageParser(HTMLParser):
                 for k, v in row.items():
                     out.setdefault(k, v)
         return out
+
+
+def _extract_asset_tag(sections: list[dict[str, str]]) -> str:
+    """hw-sys.htm のセクションリストから Asset tag を返す。"Unknown" と空は除外。"""
+    for section in sections:
+        tag = section.get("Asset tag", "").strip()
+        if tag and tag.lower() != "unknown":
+            return tag
+    return ""
+
+
+def _base_clock_mhz_from_model(model_name: str) -> int:
+    """モデル名の '@ X.XXGHz' からベースクロックを MHz で返す。見つからなければ 0。"""
+    m = re.search(r'@\s*([\d.]+)\s*GHz', model_name, re.IGNORECASE)
+    return int(float(m.group(1)) * 1000) if m else 0
+
+
+def _fmt_ghz(speed_mhz: int) -> str:
+    """1900 → '1.9GHz', 2100 → '2.1GHz', 3200 → '3.2GHz'"""
+    return f"{speed_mhz / 1000:.2f}".rstrip("0").rstrip(".") + "GHz"
 
 
 def _parse_amt_hw_page(html: str) -> list[dict[str, str]]:
@@ -364,21 +393,26 @@ class IntelAmtDriver(BaseDriver):
             items = []
         ns = f"{_CIM}CIM_Chassis"
         for item in items:
-            return SystemInfo(
+            info = SystemInfo(
                 manufacturer=_xml_text(item, "Manufacturer", ns),
                 model=_xml_text(item, "Model", ns),
                 serial=_xml_text(item, "SerialNumber", ns),
             )
+            # AssetTag は WS-MAN では取れないので hw-sys.htm Baseboard セクションから補完
+            info.asset_tag = self._fetch_asset_tag_from_html()
+            return info
         # フォールバック: hw-sys.htm (Platform セクション)
         html = self._fetch_hw_page("hw-sys.htm")
         if html:
             sections = _parse_amt_hw_page(html)
             if sections:
                 p = sections[0]
+                asset_tag = _extract_asset_tag(sections)
                 return SystemInfo(
                     manufacturer=p.get("Manufacturer", "").strip(),
                     model=p.get("Computer model", "").strip(),
                     serial=p.get("Serial number", "").strip(),
+                    asset_tag=asset_tag,
                 )
         return SystemInfo()
 
@@ -393,16 +427,17 @@ class IntelAmtDriver(BaseDriver):
             name = _xml_text(item, "DeviceID", ns) or _xml_text(item, "Name", ns) or "CPU"
             cores = _xml_text(item, "NumberOfCores", ns)
             threads = _xml_text(item, "NumberOfLogicalProcessors", ns)
-            speed = _xml_text(item, "MaxClockSpeed", ns)
             mfr = _xml_text(item, "Manufacturer", ns)
             model = _xml_text(item, "Name", ns)
+            # ベースクロックはモデル名の "@ X.XXGHz" から取る (MaxClockSpeed はブーストクロック)
+            speed_mhz = _base_clock_mhz_from_model(model)
             desc_parts = []
             if cores:
                 desc_parts.append(f"{cores}C")
             if threads:
                 desc_parts[-1] += f"/{threads}T" if desc_parts else f"{threads}T"
-            if speed:
-                desc_parts.append(f"{int(speed) // 1000}GHz")
+            if speed_mhz:
+                desc_parts.append(_fmt_ghz(speed_mhz))
             out.append(Component(
                 kind="cpu",
                 name=name,
@@ -411,7 +446,7 @@ class IntelAmtDriver(BaseDriver):
                 description=" ".join(desc_parts),
                 extra={
                     "cores": int(cores) if cores else 0,
-                    "speed_mhz": int(speed) if speed else 0,
+                    "speed_mhz": speed_mhz,
                 },
                 source_path=self._endpoint,
             ))
@@ -425,6 +460,13 @@ class IntelAmtDriver(BaseDriver):
                         comp.part_id = p.get("Version", "").strip()
                     if not comp.manufacturer:
                         comp.manufacturer = p.get("Manufacturer", "").strip()
+                    # part_id が補完されたらベースクロックも更新
+                    if not comp.extra.get("speed_mhz") and comp.part_id:
+                        base = _base_clock_mhz_from_model(comp.part_id)
+                        if base:
+                            comp.extra["speed_mhz"] = base
+                            # description の末尾にクロックを追加
+                            comp.description = (comp.description + " " + _fmt_ghz(base)).strip()
         if out:
             return out
         # フォールバック: hw-proc.htm
@@ -434,14 +476,8 @@ class IntelAmtDriver(BaseDriver):
         for idx, proc in enumerate(_parse_amt_hw_page(html)):
             model_name = proc.get("Version", "").strip()
             mfr = proc.get("Manufacturer", "").strip()
-            speed_str = proc.get("Maximum socket speed", "")
-            speed_mhz = 0
-            if speed_str:
-                try:
-                    speed_mhz = int(speed_str.split()[0])
-                except (ValueError, IndexError):
-                    pass
-            desc = f"{speed_mhz // 1000}GHz" if speed_mhz else ""
+            speed_mhz = _base_clock_mhz_from_model(model_name)
+            desc = _fmt_ghz(speed_mhz) if speed_mhz else ""
             out.append(Component(
                 kind="cpu",
                 name=f"CPU {idx}",
@@ -475,13 +511,19 @@ class IntelAmtDriver(BaseDriver):
             )
             part = _xml_text(item, "PartNumber", ns)
             serial = _xml_text(item, "SerialNumber", ns)
-            _mfr = _xml_text(item, "Manufacturer", ns)
-            # JEDEC コード (16 進数のみの長い文字列) は除外
-            mfr = "" if (_mfr and re.fullmatch(r'[0-9A-Fa-f]+', _mfr)) else _mfr
+            mfr = _xml_text(item, "Manufacturer", ns) or ""
             cap_gb = int(cap_bytes) // (1024 ** 3) if cap_bytes else 0
-            desc = f"{cap_gb}GB" if cap_gb else ""
+            speed_mhz = 0
             if speed:
-                desc += f" {speed}MHz"
+                try:
+                    speed_mhz = int(speed)
+                except ValueError:
+                    pass
+            mem_type_raw = _xml_text(item, "MemoryType", ns) or ""
+            mem_type = _CIM_MEMORY_TYPE_MAP.get(mem_type_raw, "")
+            desc = f"{cap_gb}GB" if cap_gb else ""
+            if speed_mhz:
+                desc += f" {speed_mhz}MHz"
             out.append(Component(
                 kind="memory",
                 name=tag,
@@ -489,7 +531,11 @@ class IntelAmtDriver(BaseDriver):
                 part_id=part,
                 serial=serial,
                 description=desc.strip(),
-                extra={"capacity_mib": cap_gb * 1024 if cap_gb else 0},
+                extra={
+                    "capacity_mib": cap_gb * 1024 if cap_gb else 0,
+                    "operating_speed_mhz": speed_mhz,
+                    "memory_device_type": mem_type,
+                },
                 source_path=self._endpoint,
             ))
         if out:
@@ -508,10 +554,16 @@ class IntelAmtDriver(BaseDriver):
                 except (ValueError, IndexError):
                     pass
             size_gb = size_mb // 1024 if size_mb else 0
-            speed_mhz = speed_str.split()[0] if speed_str else ""
+            html_speed_mhz = 0
+            if speed_str:
+                try:
+                    html_speed_mhz = int(speed_str.split()[0])
+                except (ValueError, IndexError):
+                    pass
+            html_mem_type = mod.get("Type", "").strip()
             desc = f"{size_gb}GB" if size_gb else ""
-            if speed_mhz:
-                desc += f" {speed_mhz}MHz"
+            if html_speed_mhz:
+                desc += f" {html_speed_mhz}MHz"
             out.append(Component(
                 kind="memory",
                 name=f"Module {idx + 1}",
@@ -519,10 +571,18 @@ class IntelAmtDriver(BaseDriver):
                 part_id=mod.get("Part number", "").strip(),
                 serial=mod.get("Serial number", "").strip(),
                 description=desc.strip(),
-                extra={"capacity_mib": size_gb * 1024 if size_gb else 0},
+                extra={
+                    "capacity_mib": size_gb * 1024 if size_gb else 0,
+                    "operating_speed_mhz": html_speed_mhz,
+                    "memory_device_type": html_mem_type,
+                },
                 source_path=self._endpoint,
             ))
         return out
+
+    def _fetch_asset_tag_from_html(self) -> str:
+        html = self._fetch_hw_page("hw-sys.htm")
+        return _extract_asset_tag(_parse_amt_hw_page(html)) if html else ""
 
     def _fetch_hw_page(self, page: str) -> str:
         """AMT web UI の hw-*.htm を取得して HTML を返す。失敗時は空文字。"""

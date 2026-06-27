@@ -189,6 +189,7 @@ _MEM_HTML = """
 <tr><td class=r1><p>Serial number</p></td><td class=r1>AABBCCDD</td></tr>
 <tr><td class=r1><p>Size</p></td><td class=r1>8192 MB</td></tr>
 <tr><td class=r1><p>Speed</p></td><td class=r1>2400 MHz</td></tr>
+<tr><td class=r1><p>Type</p></td><td class=r1>DDR4</td></tr>
 <tr><td class=r1><p>Part number</p></td><td class=r1>KVR24N17S8/8   </td></tr>
 </table>
 <h2>Module 2</h2>
@@ -197,6 +198,7 @@ _MEM_HTML = """
 <tr><td class=r1><p>Serial number</p></td><td class=r1>11223344</td></tr>
 <tr><td class=r1><p>Size</p></td><td class=r1>8192 MB</td></tr>
 <tr><td class=r1><p>Speed</p></td><td class=r1>2400 MHz</td></tr>
+<tr><td class=r1><p>Type</p></td><td class=r1>DDR4</td></tr>
 <tr><td class=r1><p>Part number</p></td><td class=r1>KVR24N17S8/8   </td></tr>
 </table>
 </body></html>
@@ -240,7 +242,7 @@ def test_collect_processors_html_fallback():
     assert cpus[0].kind == "cpu"
     assert cpus[0].name == "CPU 0"
     assert "i5-8500T" in cpus[0].part_id
-    assert "4GHz" in cpus[0].description
+    assert "2.1GHz" in cpus[0].description  # ベースクロック (@ 2.10GHz) が反映されること
 
 
 # CPU の WS-MAN 成功 + HTML 補完
@@ -272,6 +274,7 @@ def test_collect_processors_html_supplement():
     assert len(cpus) == 1
     assert "i5-8500T" in cpus[0].part_id
     assert "Intel" in cpus[0].manufacturer
+    assert "2.1GHz" in cpus[0].description  # ベースクロック (@2.10GHz) が反映されること
 
 
 def test_collect_memory_html_fallback():
@@ -294,6 +297,8 @@ def test_collect_memory_html_fallback():
     assert "8GB" in mems[0].description
     assert "2400MHz" in mems[0].description
     assert mems[0].part_id == "KVR24N17S8/8"
+    assert mems[0].extra["operating_speed_mhz"] == 2400
+    assert mems[0].extra["memory_device_type"] == "DDR4"
     assert mems[1].serial == "11223344"
 
 
@@ -339,7 +344,7 @@ def test_probe_amt_returns_false_on_404():
 _CPU_XML = (
     f'<p:CIM_Processor xmlns:p="{_CIM}CIM_Processor">'
     f"<p:DeviceID>CPU 0</p:DeviceID>"
-    f"<p:Name>Intel Core i7-12700</p:Name>"
+    f"<p:Name>Intel(R) Core(TM) i7-12700 CPU @ 2.90GHz</p:Name>"
     f"<p:Manufacturer>Intel Corporation</p:Manufacturer>"
     f"<p:NumberOfCores>12</p:NumberOfCores>"
     f"<p:NumberOfLogicalProcessors>20</p:NumberOfLogicalProcessors>"
@@ -352,6 +357,7 @@ _MEM_XML = (
     f"<p:Tag>DIMM 0</p:Tag>"
     f"<p:Capacity>{16 * 1024 ** 3}</p:Capacity>"
     f"<p:Speed>3200</p:Speed>"
+    f"<p:MemoryType>26</p:MemoryType>"
     f"<p:PartNumber>KVR32N22D8/16</p:PartNumber>"
     f"<p:SerialNumber>AABBCCDD</p:SerialNumber>"
     f"<p:Manufacturer>Kingston</p:Manufacturer>"
@@ -427,7 +433,7 @@ def test_get_inventory_cpu_and_memory():
     assert cpu.name == "CPU 0"
     assert cpu.manufacturer == "Intel Corporation"
     assert "12C" in cpu.description
-    assert "4GHz" in cpu.description
+    assert "2.9GHz" in cpu.description  # ベースクロック (@ 2.90GHz) が反映されること
 
     mem_components = [c for c in result.components if c.kind == "memory"]
     assert len(mem_components) == 1
@@ -435,6 +441,8 @@ def test_get_inventory_cpu_and_memory():
     assert mem.name == "DIMM 0"
     assert mem.description == "16GB 3200MHz"
     assert mem.serial == "AABBCCDD"
+    assert mem.extra["operating_speed_mhz"] == 3200
+    assert mem.extra["memory_device_type"] == "DDR4"
 
     drive_components = [c for c in result.components if c.kind == "drive"]
     assert len(drive_components) == 1
