@@ -127,6 +127,8 @@ docker compose up -d
 
 ## 使い方
 
+### インベントリ同期
+
 1. NetBox の Device 画面から **BMC Endpoints** → **追加** をクリック
 2. BMC アドレスと認証情報を入力して保存
 3. Endpoint 詳細画面の **[Build Modules]** ボタンをクリック
@@ -134,6 +136,18 @@ docker compose up -d
 5. 同期するコンポーネントにチェックを入れて **[Apply Selected]** を実行
 
 ModuleBay / ModuleType / Module が自動作成または更新されます。
+
+### 電源操作
+
+Endpoint 詳細画面の電源ボタングループから操作します：
+
+| ボタン | 操作 |
+|---|---|
+| **On** | 電源 ON |
+| **Off** | 強制電源 OFF（確認ダイアログあり） |
+| **Soft** | ACPI グレースフルシャットダウン |
+| **Cycle** | パワーサイクル（OFF → ON）（確認ダイアログあり） |
+| **Reset** | 強制リセット（確認ダイアログあり） |
 
 ### Module 命名規則
 

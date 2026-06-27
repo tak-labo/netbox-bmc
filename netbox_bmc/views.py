@@ -186,6 +186,34 @@ class BuildModulesApplyView(View):
         return redirect(endpoint.get_absolute_url())
 
 
+_POWER_ACTIONS = {"on", "off", "soft", "cycle", "reset"}
+
+
+class PowerActionView(View):
+    """POST: BMC 電源操作 (on / off / soft / cycle / reset)。"""
+
+    def post(self, request, pk):
+        endpoint = get_object_or_404(BMCEndpoint, pk=pk)
+        if not request.user.has_perm("netbox_bmc.change_bmcendpoint"):
+            messages.error(request, "Permission denied.")
+            return redirect(endpoint.get_absolute_url())
+
+        action = request.POST.get("action", "")
+        if action not in _POWER_ACTIONS:
+            messages.error(request, f"Unknown power action: {action}")
+            return redirect(endpoint.get_absolute_url())
+
+        try:
+            with endpoint.get_driver(request=request) as driver:
+                driver.set_power(action)
+        except Exception as e:
+            messages.error(request, f"Power action failed: {e}")
+            return redirect(endpoint.get_absolute_url())
+
+        messages.success(request, f"Power action '{action}' sent successfully.")
+        return redirect(endpoint.get_absolute_url())
+
+
 class FetchRawView(View):
     """Redfish の生 JSON をブラウザに返すデバッグビュー (GET)。"""
 
