@@ -198,6 +198,15 @@ class _HwPageParser(HTMLParser):
         return out
 
 
+def _extract_asset_tag(sections: list[dict[str, str]]) -> str:
+    """hw-sys.htm のセクションリストから Asset tag を返す。"Unknown" と空は除外。"""
+    for section in sections:
+        tag = section.get("Asset tag", "").strip()
+        if tag and tag.lower() != "unknown":
+            return tag
+    return ""
+
+
 def _base_clock_mhz_from_model(model_name: str) -> int:
     """モデル名の '@ X.XXGHz' からベースクロックを MHz で返す。見つからなければ 0。"""
     m = re.search(r'@\s*([\d.]+)\s*GHz', model_name, re.IGNORECASE)
@@ -375,21 +384,26 @@ class IntelAmtDriver(BaseDriver):
             items = []
         ns = f"{_CIM}CIM_Chassis"
         for item in items:
-            return SystemInfo(
+            info = SystemInfo(
                 manufacturer=_xml_text(item, "Manufacturer", ns),
                 model=_xml_text(item, "Model", ns),
                 serial=_xml_text(item, "SerialNumber", ns),
             )
+            # AssetTag は WS-MAN では取れないので hw-sys.htm Baseboard セクションから補完
+            info.asset_tag = self._fetch_asset_tag_from_html()
+            return info
         # フォールバック: hw-sys.htm (Platform セクション)
         html = self._fetch_hw_page("hw-sys.htm")
         if html:
             sections = _parse_amt_hw_page(html)
             if sections:
                 p = sections[0]
+                asset_tag = _extract_asset_tag(sections)
                 return SystemInfo(
                     manufacturer=p.get("Manufacturer", "").strip(),
                     model=p.get("Computer model", "").strip(),
                     serial=p.get("Serial number", "").strip(),
+                    asset_tag=asset_tag,
                 )
         return SystemInfo()
 
@@ -536,6 +550,10 @@ class IntelAmtDriver(BaseDriver):
                 source_path=self._endpoint,
             ))
         return out
+
+    def _fetch_asset_tag_from_html(self) -> str:
+        html = self._fetch_hw_page("hw-sys.htm")
+        return _extract_asset_tag(_parse_amt_hw_page(html)) if html else ""
 
     def _fetch_hw_page(self, page: str) -> str:
         """AMT web UI の hw-*.htm を取得して HTML を返す。失敗時は空文字。"""

@@ -74,9 +74,16 @@ class BuildModulesView(View):
         endpoint.detected_serial = serial
         endpoint.save(update_fields=["detected_vendor", "detected_protocol", "detected_serial"])
 
+        asset_tag = result.system.asset_tag
+        device_fields = []
         if serial and endpoint.device.serial != serial:
             endpoint.device.serial = serial
-            endpoint.device.save(update_fields=["serial"])
+            device_fields.append("serial")
+        if asset_tag and endpoint.device.asset_tag != asset_tag:
+            endpoint.device.asset_tag = asset_tag
+            device_fields.append("asset_tag")
+        if device_fields:
+            endpoint.device.save(update_fields=device_fields)
 
         firmware = {
             c.name: c.firmware
