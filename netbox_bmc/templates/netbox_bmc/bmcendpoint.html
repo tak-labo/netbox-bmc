@@ -11,7 +11,7 @@
     </button>
   </form>
 
-  <span id="power-status-badge" class="badge bg-secondary ms-1" style="font-size:.85rem;vertical-align:middle;">
+  <span id="power-status-badge" class="badge bg-secondary text-white ms-1" style="font-size:.85rem;vertical-align:middle;">
     <i class="mdi mdi-power"></i> <span id="power-status-text">…</span>
   </span>
 
@@ -19,7 +19,7 @@
   <div class="btn-group ms-1" role="group">
     <form method="post" action="{% url power_url pk=object.pk %}" class="d-inline">
       {% csrf_token %}<input type="hidden" name="action" value="on">
-      <button type="submit" class="btn btn-success btn-sm" title="Power On">
+      <button type="submit" class="btn btn-success btn-sm text-white" title="Power On">
         <i class="mdi mdi-power"></i> On
       </button>
     </form>
@@ -159,16 +159,16 @@
       const state = (data.state || "unknown").toLowerCase();
       text.textContent = state;
       if (state === "on") {
-        badge.className = "badge bg-success ms-1";
+        badge.className = "badge bg-success text-white ms-1";
       } else if (state === "off") {
-        badge.className = "badge bg-secondary ms-1";
+        badge.className = "badge bg-secondary text-white ms-1";
       } else {
         badge.className = "badge bg-warning text-dark ms-1";
       }
     })
     .catch(() => {
       text.textContent = "unreachable";
-      badge.className = "badge bg-danger ms-1";
+      badge.className = "badge bg-danger text-white ms-1";
     });
 })();
 </script>
