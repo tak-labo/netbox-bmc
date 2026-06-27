@@ -68,10 +68,15 @@ class BuildModulesView(View):
         from .module_sync import compute_diff, entry_to_dict
         from .normalizer import normalize
 
+        serial = result.system.serial
         endpoint.detected_vendor = result.vendor
         endpoint.detected_protocol = result.protocol
-        endpoint.detected_serial = result.system.serial
+        endpoint.detected_serial = serial
         endpoint.save(update_fields=["detected_vendor", "detected_protocol", "detected_serial"])
+
+        if serial and endpoint.device.serial != serial:
+            endpoint.device.serial = serial
+            endpoint.device.save(update_fields=["serial"])
 
         firmware = {
             c.name: c.firmware
