@@ -1,5 +1,26 @@
 # Changelog
 
+## [Unreleased]
+
+- Add power action buttons (On / Off / Soft / Cycle / Reset) to BMCEndpoint detail page
+- IPMI driver: tolerate SDR read errors so FRU 0 serial/model is preserved when SDR parsing fails (ASRockRack / Supermicro)
+- AMT driver: populate memory `operating_speed_mhz` and `memory_device_type` in component extra; keep JEDEC manufacturer codes as-is
+- AMT driver: write base clock from model name (`@ X.XXGHz`) instead of boost clock (`MaxClockSpeed`)
+- Write `Device.serial` and `Device.asset_tag` from BMC scan result
+
+## [0.4.15] - 2026-06-27
+
+- IPMI driver: tolerate SDR read errors so FRU 0 serial/model is preserved when pyghmi SDR parsing fails (ASRockRack / Supermicro)
+
+## [0.4.14] - 2026-06-27
+
+- AMT driver: populate memory `operating_speed_mhz` and `memory_device_type` in component `extra`; module profile now receives `data_rate` and `class`
+- AMT driver: remove JEDEC hex manufacturer filter — codes like `86E900000000` are kept as-is
+- AMT driver: use base clock from model name (`@ X.XXGHz`) instead of boost/turbo `MaxClockSpeed`
+- Write `Device.serial` to NetBox Device on BMC scan
+- Write `Device.asset_tag` to NetBox Device on BMC scan (skips "Unknown" and empty values)
+- CI: add `skip-existing: true` to PyPI publish workflow
+
 ## [0.4.13] - 2026-06-27
 
 - AMT driver: CPU `part_id` and `manufacturer` now supplemented from `hw-proc.htm` when WS-MAN `CIM_Processor` returns empty Name/Manufacturer fields (AMT 12.0 behaviour)

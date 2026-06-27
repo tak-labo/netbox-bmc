@@ -127,6 +127,8 @@ Edit `PLUGINS_CONFIG["netbox_bmc"]` in `configuration.py`:
 
 ## Use
 
+### Inventory Sync
+
 1. Open a Device in NetBox and click **BMC Endpoints** → **Add**
 2. Enter the BMC address and credentials, then save
 3. On the Endpoint detail page, click **[Build Modules]**
@@ -134,6 +136,18 @@ Edit `PLUGINS_CONFIG["netbox_bmc"]` in `configuration.py`:
 5. Check the components to sync and click **[Apply Selected]**
 
 ModuleBays, ModuleTypes, and Modules are created or updated automatically.
+
+### Power Control
+
+From the Endpoint detail page, use the power button group:
+
+| Button | Action |
+|---|---|
+| **On** | Power on |
+| **Off** | Hard power off (confirm dialog) |
+| **Soft** | ACPI graceful shutdown |
+| **Cycle** | Power cycle — off then on (confirm dialog) |
+| **Reset** | Hard reset (confirm dialog) |
 
 ### Module Naming
 
