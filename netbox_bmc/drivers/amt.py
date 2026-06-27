@@ -48,14 +48,17 @@ _ACTION_POWER = (
 )
 _ANON = "http://schemas.xmlsoap.org/ws/2004/08/addressing/role/anonymous"
 
-# CIM 電源状態マップ
+# CIM 電源状態マップ (RequestPowerStateChange PowerState 値)
 _POWER_STATE = {
     "on":    2,
-    "off":   8,   # Power Off - Hard
-    "soft":  12,  # Soft Off (ACPI S5)
-    "cycle": 9,   # Power Cycle (Off-Soft)
+    "off":   8,   # Off-Soft (ACPI)
+    "soft":  12,  # Off-Soft Graceful
+    "cycle": 9,   # Power Cycle (Off-Hard) — 非対応時は 5 にフォールバック
     "reset": 10,  # Master Bus Reset
 }
+
+# cycle の代替候補 (AvailableRequestedPowerStates で確認)
+_CYCLE_FALLBACK = [9, 5]  # Off-Hard Cycle → Off-Soft Cycle
 
 AMT_DEFAULT_PORT = 16993
 
@@ -702,10 +705,34 @@ class IntelAmtDriver(BaseDriver):
             return state_map.get(state_str, f"Unknown({state_str})")
         return "Unknown"
 
+    def _available_power_states(self) -> set[int]:
+        """CIM_AssociatedPowerManagementService の AvailableRequestedPowerStates を返す。"""
+        ns = f"{_CIM}CIM_AssociatedPowerManagementService"
+        try:
+            items = self._enumerate("CIM_AssociatedPowerManagementService")
+        except BMCError:
+            return set()
+        states: set[int] = set()
+        for item in items:
+            for elem in item.iter(f"{{{ns}}}AvailableRequestedPowerStates"):
+                try:
+                    states.add(int(elem.text))
+                except (TypeError, ValueError):
+                    pass
+        return states
+
     def set_power(self, action: str) -> None:
         state = _POWER_STATE.get(action)
         if state is None:
             raise BMCError(f"Unknown power action: {action}")
+        # cycle は AvailableRequestedPowerStates でサポート確認してフォールバック
+        if action == "cycle":
+            available = self._available_power_states()
+            if available:
+                for candidate in _CYCLE_FALLBACK:
+                    if candidate in available:
+                        state = candidate
+                        break
         resource_uri = f"{_CIM}CIM_PowerManagementService"
         body = (
             f'<p:RequestPowerStateChange_INPUT '

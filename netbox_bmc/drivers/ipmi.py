@@ -25,6 +25,27 @@ _CHASSIS_CTRL = {
 }
 
 
+def _make_safe_command_class(command_module):
+    """Return a Command subclass that tolerates SDR/OEM init failures.
+
+    pyghmi calls oem_init() inside raw_command(), so even raw chassis commands
+    hit the SDR sort bug ('float' vs 'NoneType') on some BMC firmware.
+    Swallowing the error and marking initialized lets raw_command proceed.
+    """
+    class _SafeCommand(command_module.Command):
+        def oem_init(self):
+            if getattr(self, "oem_initialized", False):
+                return
+            try:
+                super().oem_init()
+            except Exception as e:
+                logger.warning("IPMI OEM/SDR init failed (suppressed): %s", e)
+            finally:
+                self.oem_initialized = True
+
+    return _SafeCommand
+
+
 class IPMIDriver(BaseDriver):
     protocol = "ipmi"
 
@@ -35,7 +56,8 @@ class IPMIDriver(BaseDriver):
         except ImportError as e:
             raise BMCError("pyghmi is not installed") from e
         try:
-            self.cmd = command.Command(
+            SafeCommand = _make_safe_command_class(command)
+            self.cmd = SafeCommand(
                 bmc=self.address,
                 userid=self.username,
                 password=self.password,
