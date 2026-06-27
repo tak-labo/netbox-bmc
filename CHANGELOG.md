@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.4.13] - 2026-06-27
+
+- AMT driver: CPU `part_id` and `manufacturer` now supplemented from `hw-proc.htm` when WS-MAN `CIM_Processor` returns empty Name/Manufacturer fields (AMT 12.0 behaviour)
+- AMT driver: memory `Tag` falls back to `DeviceLocator` when Tag contains only digits (Asset Tag value); JEDEC hex manufacturer codes are discarded
+
 ## [0.4.12] - 2026-06-27
 
 - AMT driver: `_parse_drives_from_html` now sets `part_id` (full model name) and `manufacturer` (first word of model name) on drive components

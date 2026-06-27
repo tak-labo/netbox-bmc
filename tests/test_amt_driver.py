@@ -243,6 +243,37 @@ def test_collect_processors_html_fallback():
     assert "4GHz" in cpus[0].description
 
 
+# CPU の WS-MAN 成功 + HTML 補完
+_CPU_NO_NAME_XML = (
+    f'<p:CIM_Processor xmlns:p="{_CIM}CIM_Processor">'
+    f"<p:DeviceID>CPU 0</p:DeviceID>"
+    f"<p:Name></p:Name>"
+    f"<p:Manufacturer></p:Manufacturer>"
+    f"<p:NumberOfCores>6</p:NumberOfCores>"
+    f"<p:MaxClockSpeed>2100</p:MaxClockSpeed>"
+    f"</p:CIM_Processor>"
+)
+
+
+def test_collect_processors_html_supplement():
+    """WS-MAN で Name/Manufacturer が空のとき hw-proc.htm で補完する。"""
+    driver = make_driver()
+
+    def fake_post(self, action, resource_uri, body):
+        if "Enumerate" in action:
+            return ET.fromstring(_make_enumerate_response("ctx-cpu"))
+        return ET.fromstring(_make_pull_response("CIM_Processor", _CPU_NO_NAME_XML))
+
+    with (
+        patch.object(IntelAmtDriver, "_post", fake_post),
+        patch.object(IntelAmtDriver, "_fetch_hw_page", return_value=_PROC_HTML),
+    ):
+        cpus = driver._collect_processors()
+    assert len(cpus) == 1
+    assert "i5-8500T" in cpus[0].part_id
+    assert "Intel" in cpus[0].manufacturer
+
+
 def test_collect_memory_html_fallback():
     """CIM_PhysicalMemory が空のとき hw-mem.htm からメモリ Component を返す。"""
     from netbox_bmc.drivers.base import BMCError

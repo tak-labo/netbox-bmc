@@ -11,6 +11,7 @@ CPU / Memory / AMT ファームウェアバージョンを取得する。
 from __future__ import annotations
 
 import logging
+import re
 import uuid
 import xml.etree.ElementTree as ET
 from html.parser import HTMLParser
@@ -204,7 +205,6 @@ def _parse_amt_hw_page(html: str) -> list[dict[str, str]]:
     各セクションを 1 つの dict にしてリストで返す。
     """
     # セクション区切りは <h2> タグ。Disk ページは Disk 1, Disk 2 …
-    import re
     # h2 タグで分割して各ブロックをパース
     blocks = re.split(r'<h2[^>]*>', html, flags=re.IGNORECASE)
     results = []
@@ -415,6 +415,16 @@ class IntelAmtDriver(BaseDriver):
                 },
                 source_path=self._endpoint,
             ))
+        # HTML補完: part_id または manufacturer が空なら hw-proc.htm で埋める
+        if out and not all(c.part_id and c.manufacturer for c in out):
+            html_procs = _parse_amt_hw_page(self._fetch_hw_page("hw-proc.htm"))
+            for i, comp in enumerate(out):
+                if i < len(html_procs):
+                    p = html_procs[i]
+                    if not comp.part_id:
+                        comp.part_id = p.get("Version", "").strip()
+                    if not comp.manufacturer:
+                        comp.manufacturer = p.get("Manufacturer", "").strip()
         if out:
             return out
         # フォールバック: hw-proc.htm
@@ -451,7 +461,11 @@ class IntelAmtDriver(BaseDriver):
             items = []
         ns = f"{_CIM}CIM_PhysicalMemory"
         for item in items:
-            tag = _xml_text(item, "Tag", ns) or _xml_text(item, "DeviceLocator", ns) or "DIMM"
+            # Tag が数字のみ (Asset Tag) の場合は DeviceLocator を優先
+            _tag = _xml_text(item, "Tag", ns)
+            _locator = _xml_text(item, "DeviceLocator", ns)
+            tag = (_locator or _tag) if (not _tag or _tag.strip().replace(" ", "").isdigit()) else _tag
+            tag = tag or "DIMM"
             cap_bytes = _xml_text(item, "Capacity", ns)
             # Speed=0 の場合は ConfiguredMemoryClockSpeed / MaxMemorySpeed を使う
             _speed_raw = _xml_text(item, "Speed", ns)
@@ -461,7 +475,9 @@ class IntelAmtDriver(BaseDriver):
             )
             part = _xml_text(item, "PartNumber", ns)
             serial = _xml_text(item, "SerialNumber", ns)
-            mfr = _xml_text(item, "Manufacturer", ns)
+            _mfr = _xml_text(item, "Manufacturer", ns)
+            # JEDEC コード (16 進数のみの長い文字列) は除外
+            mfr = "" if (_mfr and re.fullmatch(r'[0-9A-Fa-f]+', _mfr)) else _mfr
             cap_gb = int(cap_bytes) // (1024 ** 3) if cap_bytes else 0
             desc = f"{cap_gb}GB" if cap_gb else ""
             if speed:
