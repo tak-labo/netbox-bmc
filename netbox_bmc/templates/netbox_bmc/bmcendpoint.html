@@ -124,8 +124,13 @@
             <td>{{ object.detected_vendor|placeholder }}</td></tr>
         <tr><th scope="row">Detected Protocol</th>
             <td>{{ object.detected_protocol|placeholder }}</td></tr>
+        {% if "Dell" in object.detected_vendor %}
+        <tr><th scope="row">Detected Service Tag</th>
+            <td>{{ object.detected_serial|placeholder }}</td></tr>
+        {% else %}
         <tr><th scope="row">Detected Serial</th>
             <td>{{ object.detected_serial|placeholder }}</td></tr>
+        {% endif %}
         <tr><th scope="row">Power</th>
             <td><span id="power-status-text">…</span></td></tr>
         <tr><th scope="row">Last Sync</th>
