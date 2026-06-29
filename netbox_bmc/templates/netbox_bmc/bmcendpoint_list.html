@@ -1,0 +1,15 @@
+{% extends "generic/object_list.html" %}
+
+{% block javascript %}
+{{ block.super }}
+<script>
+document.querySelectorAll('.bmc-power-status').forEach(function (el) {
+  fetch(el.dataset.url)
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      el.textContent = data.error ? 'error' : (data.state || 'unknown').toLowerCase();
+    })
+    .catch(function () { el.textContent = 'unreachable'; });
+});
+</script>
+{% endblock %}

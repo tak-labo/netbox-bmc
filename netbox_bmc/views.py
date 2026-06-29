@@ -13,6 +13,7 @@ from .models import BMCEndpoint
 class BMCEndpointListView(generic.ObjectListView):
     queryset = BMCEndpoint.objects.all()
     table = tables.BMCEndpointTable
+    template_name = "netbox_bmc/bmcendpoint_list.html"
 
 
 class BMCEndpointView(generic.ObjectView):
