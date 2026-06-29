@@ -14,10 +14,10 @@ class BMCEndpointSerializer(NetBoxModelSerializer):
         model = BMCEndpoint
         fields = (
             "id", "url", "display",
-            "device", "address", "port", "protocol", "verify_ssl",
+            "device", "ip_address", "port", "protocol", "verify_ssl",
             "username", "password",
             "detected_vendor", "detected_protocol",
             "last_sync", "last_sync_status",
             "tags", "custom_fields", "created", "last_updated",
         )
-        brief_fields = ("id", "url", "display", "device", "address")
+        brief_fields = ("id", "url", "display", "device", "ip_address")
