@@ -696,13 +696,17 @@ class IntelAmtDriver(BaseDriver):
     def get_power_state(self) -> str:
         try:
             items = self._enumerate("CIM_AssociatedPowerManagementService")
-        except BMCError:
+        except BMCError as e:
+            logger.warning("get_power_state: enumerate failed: %s", e)
             return "Unknown"
         ns = f"{_CIM}CIM_AssociatedPowerManagementService"
         for item in items:
             state_str = _xml_text(item, "PowerState", ns)
             state_map = {"2": "On", "6": "Off", "8": "Off", "3": "Standby"}
-            return state_map.get(state_str, f"Unknown({state_str})")
+            result = state_map.get(state_str, f"Unknown({state_str})")
+            logger.debug("get_power_state: PowerState=%r -> %s", state_str, result)
+            return result
+        logger.warning("get_power_state: CIM_AssociatedPowerManagementService returned no items")
         return "Unknown"
 
     def _available_power_states(self) -> set[int]:
