@@ -85,11 +85,20 @@ class IPMIDriver(BaseDriver):
             if name == "System":
                 system.manufacturer = (info.get("Manufacturer")
                                        or info.get("Board manufacturer") or "")
-                system.model = (info.get("Product name")
-                                or info.get("Board product name") or "")
+                system.model = next(
+                    (v for v in (
+                        info.get("Product name"),
+                        info.get("Model"),
+                        info.get("Board product name"),
+                    ) if v and v.upper() != "NONE"),
+                    "",
+                )
                 system.serial = (info.get("Serial Number")
                                  or info.get("Board serial number") or "")
                 system.uuid = str(info.get("UUID") or "")
+            elif name == "BMC FRU":
+                # duplicate of System FRU — skip
+                pass
             else:
                 components.append(Component(
                     kind=_guess_kind(name),
@@ -99,6 +108,8 @@ class IPMIDriver(BaseDriver):
                             or info.get("Product name", "") or "",
                     serial=info.get("Serial Number", "") or "",
                 ))
+
+        components.extend(_components_from_sensors(self.cmd))
 
         return InventoryResult(system=system, components=components,
                                vendor=system.manufacturer or "Unknown",
@@ -134,6 +145,67 @@ class IPMIDriver(BaseDriver):
             self.cmd.ipmi_session.logout()
         except Exception:
             pass
+
+
+import re as _re
+
+
+def _components_from_sensors(cmd) -> list[Component]:
+    """SDR センサー名から CPU / DIMM / Fan / PSU の Component を生成する。
+
+    FRU では得られないコンポーネント存在情報をセンサーから補完する。
+    センサーは名前のみで詳細スペックは不明なため part_id / serial は空。
+    """
+    try:
+        sensors = list(cmd.get_sensor_data())
+    except Exception as e:
+        logger.warning("IPMI get_sensor_data failed: %s", e)
+        return []
+
+    cpus: set[str] = set()
+    dimms: set[str] = set()
+    fans: set[str] = set()
+    psus: set[str] = set()
+
+    for s in sensors:
+        name = getattr(s, "name", "") or ""
+        stype = getattr(s, "type", "") or ""
+        states = getattr(s, "states", []) or []
+
+        # CPU: "CPU1 Temp" (Supermicro) or type=Processor "CPU0_Status" (Gigabyte 等)
+        if _re.match(r"CPU\d+\s+Temp", name, _re.IGNORECASE):
+            cpus.add(_re.match(r"CPU(\d+)", name, _re.IGNORECASE).group(1))
+        elif stype == "Processor":
+            m = _re.search(r"CPU(\d+)", name, _re.IGNORECASE)
+            cpus.add(m.group(1) if m else "0")
+
+        # P1-DIMMA1 Temp / P2-DIMMB2 Temp → Memory slot names
+        elif _re.match(r"P\d+-DIMM\w+\s+Temp", name, _re.IGNORECASE):
+            slot = _re.match(r"(P\d+-DIMM\w+)", name, _re.IGNORECASE).group(1)
+            dimms.add(slot)
+
+        # Fan sensors
+        elif stype == "Fan" and getattr(s, "value", None) is not None:
+            fans.add(name)
+
+        # PSU: Power Supply sensors with "Present" state
+        elif stype == "Power Supply" and any("Present" in st for st in states):
+            psus.add(name)
+
+    out: list[Component] = []
+    for idx, num in enumerate(sorted(cpus, key=int)):
+        # ponytail: use sensor number as-is; Supermicro is 1-based but normalizer re-indexes anyway
+        out.append(Component(kind="cpu", name=f"CPU {num}"))
+    for idx, slot in enumerate(sorted(dimms)):
+        out.append(Component(kind="memory", name=slot))
+    for idx, fname in enumerate(sorted(fans)):
+        out.append(Component(kind="fan", name=fname))
+    for idx, pname in enumerate(sorted(psus)):
+        out.append(Component(kind="psu", name=pname))
+
+    logger.debug("sensor-derived components: %d cpu, %d dimm, %d fan, %d psu",
+                 len(cpus), len(dimms), len(fans), len(psus))
+    return out
 
 
 def _guess_kind(fru_name: str) -> str:
