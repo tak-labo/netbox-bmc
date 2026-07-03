@@ -8,6 +8,7 @@ Redfish より取得できる情報は限定的 (CPU/DIMM の詳細は出ない�
 from __future__ import annotations
 
 import logging
+import re as _re
 
 from ..inventory import Component, InventoryResult, SystemInfo
 from .base import BaseDriver, BMCError
@@ -147,9 +148,6 @@ class IPMIDriver(BaseDriver):
             pass
 
 
-import re as _re
-
-
 def _components_from_sensors(cmd) -> list[Component]:
     """SDR センサー名から CPU / DIMM / Fan / PSU の Component を生成する。
 
@@ -193,14 +191,14 @@ def _components_from_sensors(cmd) -> list[Component]:
             psus.add(name)
 
     out: list[Component] = []
-    for idx, num in enumerate(sorted(cpus, key=int)):
+    for num in sorted(cpus, key=int):
         # ponytail: use sensor number as-is; Supermicro is 1-based but normalizer re-indexes anyway
         out.append(Component(kind="cpu", name=f"CPU {num}"))
-    for idx, slot in enumerate(sorted(dimms)):
+    for slot in sorted(dimms):
         out.append(Component(kind="memory", name=slot))
-    for idx, fname in enumerate(sorted(fans)):
+    for fname in sorted(fans):
         out.append(Component(kind="fan", name=fname))
-    for idx, pname in enumerate(sorted(psus)):
+    for pname in sorted(psus):
         out.append(Component(kind="psu", name=pname))
 
     logger.debug("sensor-derived components: %d cpu, %d dimm, %d fan, %d psu",
