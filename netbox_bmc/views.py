@@ -3,6 +3,7 @@ from django.contrib import messages
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils import timezone
 from django.views.generic import View
 from netbox.views import generic
 
@@ -63,6 +64,9 @@ class BuildModulesView(View):
             with endpoint.get_driver(request=request) as driver:
                 result = driver.get_inventory()
         except Exception as e:
+            endpoint.last_sync = timezone.now()
+            endpoint.last_sync_status = f"Error: {e}"
+            endpoint.save(update_fields=["last_sync", "last_sync_status"])
             messages.error(request, f"BMC scan failed: {e}")
             return redirect(endpoint.get_absolute_url())
 
@@ -73,7 +77,12 @@ class BuildModulesView(View):
         endpoint.detected_vendor = result.vendor
         endpoint.detected_protocol = result.protocol
         endpoint.detected_serial = serial
-        endpoint.save(update_fields=["detected_vendor", "detected_protocol", "detected_serial"])
+        endpoint.last_sync = timezone.now()
+        endpoint.last_sync_status = "OK"
+        endpoint.save(update_fields=[
+            "detected_vendor", "detected_protocol", "detected_serial",
+            "last_sync", "last_sync_status",
+        ])
 
         asset_tag = result.system.asset_tag
         device_fields = []

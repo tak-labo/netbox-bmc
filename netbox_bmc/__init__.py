@@ -6,13 +6,13 @@ try:
     __version__ = version("netbox-bmc")
 except Exception:
     __version__ = "unknown"
-__author__ = "tak-labo"
+__author__ = "Takahiro Nagafuchi"
 __email__ = ""
 
 
 class NetBoxBMCConfig(PluginConfig):
     name = "netbox_bmc"
-    verbose_name = "NetBox BMC (IPMI/Redfish)"
+    verbose_name = "NetBox BMC"
     description = "Unified out-of-band management: Redfish & IPMI inventory sync, power control, console access"
     version = __version__
     author = __author__
