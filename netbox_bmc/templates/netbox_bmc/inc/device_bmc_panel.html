@@ -5,7 +5,7 @@
     {% if bmc_endpoint %}
       <table class="table table-hover attr-table">
         <tr><th scope="row">Address</th>
-            <td>{{ bmc_endpoint.address }}{% if bmc_endpoint.port %}:{{ bmc_endpoint.port }}{% endif %}</td></tr>
+            <td>{{ bmc_endpoint.ip_address.address.ip }}{% if bmc_endpoint.port %}:{{ bmc_endpoint.port }}{% endif %}</td></tr>
         <tr><th scope="row">Protocol</th>
             <td>{{ bmc_endpoint.get_protocol_display }}</td></tr>
         <tr><th scope="row">Last Sync</th>
