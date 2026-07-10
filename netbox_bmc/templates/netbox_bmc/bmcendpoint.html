@@ -2,6 +2,38 @@
 {% load helpers %}
 
 {% block extra_controls %}
+  {% if object.dns_name %}
+  <div class="btn-group ms-1" role="group">
+    <a href="{{ object.web_gui_url }}" target="_blank" rel="noopener noreferrer"
+       class="btn btn-secondary btn-sm">
+      <i class="mdi mdi-web"></i> Web GUI (IP)
+    </a>
+    <a href="{{ object.web_gui_url_dns }}" target="_blank" rel="noopener noreferrer"
+       class="btn btn-secondary btn-sm">
+      <i class="mdi mdi-web"></i> Web GUI (DNS)
+    </a>
+  </div>
+  <div class="btn-group ms-1" role="group">
+    <a href="{{ object.console_url }}" target="_blank" rel="noopener noreferrer"
+       class="btn btn-outline-secondary btn-sm">
+      <i class="mdi mdi-monitor"></i> Console (IP)
+    </a>
+    <a href="{{ object.console_url_dns }}" target="_blank" rel="noopener noreferrer"
+       class="btn btn-outline-secondary btn-sm">
+      <i class="mdi mdi-monitor"></i> Console (DNS)
+    </a>
+  </div>
+  {% else %}
+  <a href="{{ object.web_gui_url }}" target="_blank" rel="noopener noreferrer"
+     class="btn btn-secondary ms-1">
+    <i class="mdi mdi-web"></i> Web GUI
+  </a>
+  <a href="{{ object.console_url }}" target="_blank" rel="noopener noreferrer"
+     class="btn btn-outline-secondary ms-1">
+    <i class="mdi mdi-monitor"></i> Open Console
+  </a>
+  {% endif %}
+
   <form method="post"
         action="{% url 'plugins:netbox_bmc:bmcendpoint_build_modules' pk=object.pk %}"
         class="d-inline">

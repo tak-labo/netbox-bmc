@@ -59,6 +59,45 @@ class BMCEndpoint(JobsMixin, NetBoxModel):
     def get_absolute_url(self):
         return reverse("plugins:netbox_bmc:bmcendpoint", args=[self.pk])
 
+    def _bmc_host(self, use_dns=False):
+        if use_dns and self.ip_address.dns_name:
+            host = self.ip_address.dns_name
+        else:
+            host = str(self.ip_address.address.ip)
+        return f"{host}:{self.port}" if self.port else host
+
+    def _console_path(self):
+        vendor = self.detected_vendor.lower()
+        if "dell" in vendor or "idrac" in vendor:
+            return "/console"
+        if "hp" in vendor or "ilo" in vendor:
+            return "/ui/"
+        if "lenovo" in vendor or "xcc" in vendor:
+            return "/bmc/viewer"
+        if "supermicro" in vendor:
+            return "/html5.html"
+        return "/"
+
+    @property
+    def dns_name(self):
+        return self.ip_address.dns_name or ""
+
+    @property
+    def web_gui_url(self):
+        return f"https://{self._bmc_host()}/"
+
+    @property
+    def web_gui_url_dns(self):
+        return f"https://{self._bmc_host(use_dns=True)}/" if self.ip_address.dns_name else None
+
+    @property
+    def console_url(self):
+        return f"https://{self._bmc_host()}{self._console_path()}"
+
+    @property
+    def console_url_dns(self):
+        return f"https://{self._bmc_host(use_dns=True)}{self._console_path()}" if self.ip_address.dns_name else None
+
     def get_driver(self, request=None):
         """
         BMC ドライバを生成して返す。

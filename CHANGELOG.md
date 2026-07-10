@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.4.23] - 2026-07-08
+
+- Add "Open Console" button to BMCEndpoint detail page with vendor-specific HTML5 KVM URL (Dell/HPE/Lenovo/Supermicro)
+- Add "Web GUI" button to BMCEndpoint detail page
+- Show IP and DNS variants of both buttons when `IPAddress.dns_name` is configured
+
 - Add power action buttons (On / Off / Soft / Cycle / Reset) to BMCEndpoint detail page
 - IPMI driver: tolerate SDR read errors so FRU 0 serial/model is preserved when SDR parsing fails (ASRockRack / Supermicro)
 - AMT driver: populate memory `operating_speed_mhz` and `memory_device_type` in component extra; keep JEDEC manufacturer codes as-is
