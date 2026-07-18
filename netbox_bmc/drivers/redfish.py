@@ -144,7 +144,7 @@ class RedfishDriver(BaseDriver):
                 r = self.session.post(
                     f"{self.base}/redfish/v1/SessionService/Sessions",
                     json={"UserName": self.username, "Password": self.password},
-                    timeout=self.timeout,
+                    timeout=self.timeout, verify=self.verify_ssl,
                 )
             if r.status_code in (200, 201):
                 self.session.headers["X-Auth-Token"] = r.headers["X-Auth-Token"]
@@ -163,7 +163,7 @@ class RedfishDriver(BaseDriver):
         url = self._url(path)
         try:
             with self._suppress_ssl_warnings():
-                r = self.session.get(url, timeout=self.timeout)
+                r = self.session.get(url, timeout=self.timeout, verify=self.verify_ssl)
             r.raise_for_status()
             return r.json()
         except requests.RequestException as e:
@@ -178,7 +178,7 @@ class RedfishDriver(BaseDriver):
         """
         try:
             with self._suppress_ssl_warnings():
-                r = self.session.get(self._url(path), timeout=self.timeout)
+                r = self.session.get(self._url(path), timeout=self.timeout, verify=self.verify_ssl)
             r.raise_for_status()
         except requests.RequestException:
             return None
@@ -510,7 +510,7 @@ class RedfishDriver(BaseDriver):
             r = self.session.post(
                 self._url(target),
                 json={"ResetType": reset_type},
-                timeout=self.timeout,
+                timeout=self.timeout, verify=self.verify_ssl,
             )
         if r.status_code not in (200, 202, 204):
             raise BMCError(f"Power action failed: HTTP {r.status_code} {r.text[:200]}")
@@ -620,7 +620,7 @@ class RedfishDriver(BaseDriver):
                 self._url(chassis_ref),
                 json={"LocationIndicatorActive": on},
                 headers=headers,
-                timeout=self.timeout,
+                timeout=self.timeout, verify=self.verify_ssl,
             )
         if r.status_code in (200, 202, 204):
             return
@@ -634,7 +634,7 @@ class RedfishDriver(BaseDriver):
                 self._url(chassis_ref),
                 json={"IndicatorLED": "Lit" if on else "Off"},
                 headers=headers,
-                timeout=self.timeout,
+                timeout=self.timeout, verify=self.verify_ssl,
             )
         if r2.status_code not in (200, 202, 204):
             raise BMCError(
@@ -782,7 +782,7 @@ class RedfishDriver(BaseDriver):
         if self._session_uri:
             try:
                 with self._suppress_ssl_warnings():
-                    self.session.delete(self._url(self._session_uri), timeout=5)
+                    self.session.delete(self._url(self._session_uri), timeout=5, verify=self.verify_ssl)
             except requests.RequestException:
                 pass
         self.session.close()

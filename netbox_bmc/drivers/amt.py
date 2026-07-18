@@ -304,7 +304,7 @@ class IntelAmtDriver(BaseDriver):
         try:
             with self._suppress_ssl_warnings():
                 r = self._session.post(self._endpoint, data=xml_body,
-                                       timeout=self.timeout)
+                                       timeout=self.timeout, verify=self.verify_ssl)
             r.raise_for_status()
         except requests.RequestException as e:
             raise BMCError(f"WS-MAN {action.split('/')[-1]} failed: {e}") from e
@@ -592,7 +592,7 @@ class IntelAmtDriver(BaseDriver):
         base = self._endpoint.replace("/wsman", "")
         try:
             with self._suppress_ssl_warnings():
-                r = self._session.get(f"{base}/{page}", timeout=self.timeout)
+                r = self._session.get(f"{base}/{page}", timeout=self.timeout, verify=self.verify_ssl)
             return r.text if r.status_code == 200 else ""
         except requests.RequestException:
             return ""
