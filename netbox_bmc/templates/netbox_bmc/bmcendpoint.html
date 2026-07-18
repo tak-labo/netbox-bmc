@@ -2,95 +2,6 @@
 {% load helpers %}
 {% load i18n %}
 
-{% block extra_controls %}
-  {% if object.dns_name %}
-  <div class="btn-group ms-1" role="group">
-    <a href="{{ object.web_gui_url }}" target="_blank" rel="noopener noreferrer"
-       class="btn btn-secondary btn-sm">
-      <i class="mdi mdi-web"></i> {% trans "Web GUI (IP)" %}
-    </a>
-    <a href="{{ object.web_gui_url_dns }}" target="_blank" rel="noopener noreferrer"
-       class="btn btn-secondary btn-sm">
-      <i class="mdi mdi-web"></i> {% trans "Web GUI (DNS)" %}
-    </a>
-  </div>
-  {% else %}
-  <a href="{{ object.web_gui_url }}" target="_blank" rel="noopener noreferrer"
-     class="btn btn-secondary ms-1">
-    <i class="mdi mdi-web"></i> {% trans "Web GUI" %}
-  </a>
-  {% endif %}
-
-  <form method="post"
-        action="{% url 'plugins:netbox_bmc:bmcendpoint_build_modules' pk=object.pk %}"
-        class="d-inline">
-    {% csrf_token %}
-    <button type="submit" class="btn btn-primary">
-      <i class="mdi mdi-chip"></i> {% trans "Build Modules" %}
-    </button>
-  </form>
-
-  {% with power_url="plugins:netbox_bmc:bmcendpoint_power" %}
-  <div class="btn-group ms-1" role="group">
-    <form method="post" action="{% url power_url pk=object.pk %}" class="d-inline">
-      {% csrf_token %}<input type="hidden" name="action" value="on">
-      <button type="submit" class="btn btn-success btn-sm text-white" title="{% trans 'Power On' %}">
-        <i class="mdi mdi-power"></i> {% trans "On" %}
-      </button>
-    </form>
-    <form method="post" action="{% url power_url pk=object.pk %}" class="d-inline">
-      {% csrf_token %}<input type="hidden" name="action" value="off">
-      <button type="submit" class="btn btn-danger btn-sm" title="{% trans 'Power Off (Hard)' %}"
-              onclick="return confirm('{% trans 'Hard power off?' %}')">
-        <i class="mdi mdi-power-off"></i> {% trans "Off" %}
-      </button>
-    </form>
-    <form method="post" action="{% url power_url pk=object.pk %}" class="d-inline">
-      {% csrf_token %}<input type="hidden" name="action" value="soft">
-      <button type="submit" class="btn btn-outline-warning btn-sm" title="{% trans 'Soft Off (ACPI)' %}">
-        <i class="mdi mdi-power-sleep"></i> {% trans "Soft" %}
-      </button>
-    </form>
-    <form method="post" action="{% url power_url pk=object.pk %}" class="d-inline">
-      {% csrf_token %}<input type="hidden" name="action" value="cycle">
-      <button type="submit" class="btn btn-outline-secondary btn-sm" title="{% trans 'Power Cycle' %}"
-              onclick="return confirm('{% trans 'Power cycle?' %}')">
-        <i class="mdi mdi-restart"></i> {% trans "Cycle" %}
-      </button>
-    </form>
-    <form method="post" action="{% url power_url pk=object.pk %}" class="d-inline">
-      {% csrf_token %}<input type="hidden" name="action" value="reset">
-      <button type="submit" class="btn btn-outline-secondary btn-sm" title="{% trans 'Reset' %}"
-              onclick="return confirm('{% trans 'Reset?' %}')">
-        <i class="mdi mdi-reload"></i> {% trans "Reset" %}
-      </button>
-    </form>
-  </div>
-  {% endwith %}
-
-  {% with identify_url="plugins:netbox_bmc:bmcendpoint_identify" %}
-  <div class="btn-group ms-1" role="group">
-    <form method="post" action="{% url identify_url pk=object.pk %}" class="d-inline">
-      {% csrf_token %}<input type="hidden" name="on" value="true">
-      <button type="submit" class="btn btn-outline-info btn-sm" title="{% trans 'Identify On' %}">
-        <i class="mdi mdi-map-marker-alert"></i> {% trans "Identify On" %}
-      </button>
-    </form>
-    <form method="post" action="{% url identify_url pk=object.pk %}" class="d-inline">
-      {% csrf_token %}<input type="hidden" name="on" value="false">
-      <button type="submit" class="btn btn-outline-secondary btn-sm" title="{% trans 'Identify Off' %}">
-        <i class="mdi mdi-map-marker-off"></i> {% trans "Identify Off" %}
-      </button>
-    </form>
-  </div>
-  {% endwith %}
-
-  <a href="{% url 'plugins:netbox_bmc:bmcendpoint_raw' pk=object.pk %}?depth=3"
-     target="_blank" class="btn btn-outline-secondary ms-1">
-    <i class="mdi mdi-code-json"></i> {% trans "Raw Data" %}
-  </a>
-{% endblock %}
-
 {% block content %}
 <div class="row">
   <div class="col col-md-6">
@@ -137,18 +48,16 @@
     <div class="card mt-3">
       <h5 class="card-header">{% trans "Credentials" %}</h5>
       <table class="table table-hover attr-table">
-        {% if secrets_available %}
-          <tr>
-            <th scope="row">netbox-secrets</th>
-            <td>
+        <tr>
+          <th scope="row">{% trans "Source" %}</th>
+          <td>
+            {% if secrets_available %}
               {% if secret_found %}
-                <span class="badge bg-success">
-                  <i class="mdi mdi-lock-check"></i> {% trans "Secret found (bmc-credentials role)" %}
-                </span>
+                <i class="mdi mdi-lock-check text-success"></i>
+                netbox-secrets — {% trans "Secret found (bmc-credentials role)" %}
               {% else %}
-                <span class="badge bg-warning text-dark">
-                  <i class="mdi mdi-lock-alert"></i> {% trans "No secret found for this device" %}
-                </span>
+                <i class="mdi mdi-lock-alert text-warning"></i>
+                netbox-secrets — {% trans "No secret found for this device" %}
                 <div class="text-muted small mt-1">
                   {% trans "Add a Secret with role" %} <code>bmc-credentials</code>
                   {% trans "assigned to" %} <strong>{{ object.device }}</strong>.<br>
@@ -159,20 +68,16 @@
                   {% endif %}
                 </div>
               {% endif %}
-            </td>
-          </tr>
-        {% else %}
-          <tr>
-            <td colspan="2">
-              <span class="badge bg-secondary">netbox-secrets not installed</span>
-              — {% trans "credentials stored in plaintext fields below." %}
-            </td>
-          </tr>
-        {% endif %}
-        {% if object.username %}
-          <tr><th scope="row">{% trans "Username (fallback)" %}</th>
+            {% else %}
+              <i class="mdi mdi-file-document-outline text-muted"></i>
+              {% trans "Plaintext" %} (netbox-secrets {% trans "not installed" %})
+            {% endif %}
+          </td>
+        </tr>
+        {% if object.username and not secret_found %}
+          <tr><th scope="row">{% trans "Username" %}</th>
               <td><code>{{ object.username }}</code></td></tr>
-          <tr><th scope="row">{% trans "Password (fallback)" %}</th>
+          <tr><th scope="row">{% trans "Password" %}</th>
               <td><em class="text-muted">{% trans "stored (plaintext)" %}</em></td></tr>
         {% endif %}
       </table>
@@ -180,6 +85,100 @@
   </div>
 
   <div class="col col-md-6">
+    <div class="card mb-3">
+      <h5 class="card-header">{% trans "Actions" %}</h5>
+      <div class="card-body d-flex flex-wrap gap-2">
+        {% if object.dns_name %}
+          <a href="{{ object.web_gui_url }}" target="_blank" rel="noopener noreferrer"
+             class="btn btn-secondary btn-sm">
+            <i class="mdi mdi-web"></i> {% trans "Web GUI (IP)" %}
+          </a>
+          <a href="{{ object.web_gui_url_dns }}" target="_blank" rel="noopener noreferrer"
+             class="btn btn-secondary btn-sm">
+            <i class="mdi mdi-web"></i> {% trans "Web GUI (DNS)" %}
+          </a>
+        {% else %}
+          <a href="{{ object.web_gui_url }}" target="_blank" rel="noopener noreferrer"
+             class="btn btn-secondary btn-sm">
+            <i class="mdi mdi-web"></i> {% trans "Web GUI" %}
+          </a>
+        {% endif %}
+
+        <form method="post"
+              action="{% url 'plugins:netbox_bmc:bmcendpoint_build_modules' pk=object.pk %}"
+              class="d-inline">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-primary btn-sm">
+            <i class="mdi mdi-chip"></i> {% trans "Build Modules" %}
+          </button>
+        </form>
+
+        <a href="{% url 'plugins:netbox_bmc:bmcendpoint_raw' pk=object.pk %}?depth=3"
+           target="_blank" class="btn btn-outline-secondary btn-sm">
+          <i class="mdi mdi-code-json"></i> {% trans "Raw Data" %}
+        </a>
+      </div>
+    </div>
+
+    <div class="card mb-3">
+      <h5 class="card-header">{% trans "Power Control" %}</h5>
+      <div class="card-body">
+        {% with power_url="plugins:netbox_bmc:bmcendpoint_power" %}
+        <div class="d-flex flex-wrap gap-2" role="group">
+          <form method="post" action="{% url power_url pk=object.pk %}" class="d-inline">
+            {% csrf_token %}<input type="hidden" name="action" value="on">
+            <button type="submit" class="btn btn-success btn-sm text-white" title="{% trans 'Power On' %}">
+              <i class="mdi mdi-power"></i> {% trans "On" %}
+            </button>
+          </form>
+          <form method="post" action="{% url power_url pk=object.pk %}" class="d-inline">
+            {% csrf_token %}<input type="hidden" name="action" value="off">
+            <button type="submit" class="btn btn-danger btn-sm" title="{% trans 'Power Off (Hard)' %}"
+                    onclick="return confirm('{% trans 'Hard power off?' %}')">
+              <i class="mdi mdi-power-off"></i> {% trans "Off" %}
+            </button>
+          </form>
+          <form method="post" action="{% url power_url pk=object.pk %}" class="d-inline">
+            {% csrf_token %}<input type="hidden" name="action" value="soft">
+            <button type="submit" class="btn btn-outline-warning btn-sm" title="{% trans 'Soft Off (ACPI)' %}">
+              <i class="mdi mdi-power-sleep"></i> {% trans "Soft" %}
+            </button>
+          </form>
+          <form method="post" action="{% url power_url pk=object.pk %}" class="d-inline">
+            {% csrf_token %}<input type="hidden" name="action" value="cycle">
+            <button type="submit" class="btn btn-outline-secondary btn-sm" title="{% trans 'Power Cycle' %}"
+                    onclick="return confirm('{% trans 'Power cycle?' %}')">
+              <i class="mdi mdi-restart"></i> {% trans "Cycle" %}
+            </button>
+          </form>
+          <form method="post" action="{% url power_url pk=object.pk %}" class="d-inline">
+            {% csrf_token %}<input type="hidden" name="action" value="reset">
+            <button type="submit" class="btn btn-outline-secondary btn-sm" title="{% trans 'Reset' %}"
+                    onclick="return confirm('{% trans 'Reset?' %}')">
+              <i class="mdi mdi-reload"></i> {% trans "Reset" %}
+            </button>
+          </form>
+        </div>
+        {% endwith %}
+        {% with identify_url="plugins:netbox_bmc:bmcendpoint_identify" %}
+        <div class="d-flex flex-wrap gap-2 mt-2">
+          <form method="post" action="{% url identify_url pk=object.pk %}" class="d-inline">
+            {% csrf_token %}<input type="hidden" name="on" value="true">
+            <button type="submit" class="btn btn-outline-info btn-sm" title="{% trans 'Identify On' %}">
+              <i class="mdi mdi-map-marker-alert"></i> {% trans "Identify On" %}
+            </button>
+          </form>
+          <form method="post" action="{% url identify_url pk=object.pk %}" class="d-inline">
+            {% csrf_token %}<input type="hidden" name="on" value="false">
+            <button type="submit" class="btn btn-outline-secondary btn-sm" title="{% trans 'Identify Off' %}">
+              <i class="mdi mdi-map-marker-off"></i> {% trans "Identify Off" %}
+            </button>
+          </form>
+        </div>
+        {% endwith %}
+      </div>
+    </div>
+
     <div class="card">
       <h5 class="card-header">{% trans "Sync Status" %}</h5>
       <table class="table table-hover attr-table">
