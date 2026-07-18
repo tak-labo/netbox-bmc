@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.4.24] - 2026-07-18
+
 - Network/Sensors/Event Log/BMC Health are now persisted to the database and refreshed via a
   per-endpoint "Sync" button or an optional scheduled job (`*_sync_interval_minutes`), instead
   of being fetched live on every page load
