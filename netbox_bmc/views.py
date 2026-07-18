@@ -277,6 +277,27 @@ class PowerStatusView(View):
         return JsonResponse({"state": state})
 
 
+class NetworkConfigView(View):
+    """GET: BMC 自身のネットワーク設定を JSON で返す (ライブ取得、DB保存なし)。"""
+
+    def get(self, request, pk):
+        endpoint = get_object_or_404(BMCEndpoint, pk=pk)
+        if not request.user.has_perm("netbox_bmc.view_bmcendpoint"):
+            return JsonResponse({"error": _("Permission denied.")}, status=403)
+
+        try:
+            with endpoint.get_driver(request=request) as driver:
+                net = driver.get_network_config()
+        except NotImplementedError:
+            return JsonResponse(
+                {"error": _("Not supported for this protocol")}, status=501,
+            )
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
+
+        return JsonResponse(asdict(net))
+
+
 class ManagerInfoView(View):
     """GET: BMC 自身のファームウェア/ヘルスを JSON で返す (ライブ取得、DB保存なし)。"""
 

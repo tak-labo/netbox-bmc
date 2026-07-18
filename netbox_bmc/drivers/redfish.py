@@ -17,6 +17,7 @@ import requests
 import urllib3
 
 from ..inventory import (
+    BmcNetworkInterface,
     Component,
     InventoryResult,
     ManagerInfo,
@@ -492,6 +493,54 @@ class RedfishDriver(BaseDriver):
             )
         if r.status_code not in (200, 202, 204):
             raise BMCError(f"Power action failed: HTTP {r.status_code} {r.text[:200]}")
+
+    # --- ネットワーク設定 ---------------------------------------------------
+    def get_network_config(self) -> BmcNetworkInterface:
+        """Managers/{id}/EthernetInterfaces から BMC 自身のネットワーク設定を取得。
+
+        ComputerSystem 側の EthernetInterfaces (ホストOSのNIC) とは別リソース。
+        パスはハードコードせず ServiceRoot -> Managers -> EthernetInterfaces を辿る。
+        """
+        root = self._get("/redfish/v1")
+        managers = self._collection(root, "Managers")
+        if not managers:
+            raise BMCError("No Manager resource found")
+        mgr = managers[0]
+
+        ifaces = self._collection(mgr, "EthernetInterfaces")
+        if not ifaces:
+            raise BMCError("No Manager EthernetInterfaces found")
+        iface = next(
+            (i for i in ifaces if i.get("LinkStatus") == "LinkUp"),
+            ifaces[0],
+        )
+
+        ipv4 = (iface.get("IPv4Addresses") or [{}])[0]
+        vlan = iface.get("VLAN") or {}
+        dhcp = iface.get("DHCPv4") or {}
+
+        hostname = iface.get("HostName") or ""
+        fqdn = iface.get("FQDN") or ""
+        if not (hostname and fqdn):
+            netproto_ref = mgr.get("NetworkProtocol", {}).get("@odata.id")
+            netproto = self._get_optional(netproto_ref) if netproto_ref else None
+            if netproto:
+                hostname = hostname or netproto.get("HostName") or ""
+                fqdn = fqdn or netproto.get("FQDN") or ""
+
+        return BmcNetworkInterface(
+            dhcp_enabled=dhcp.get("DHCPEnabled"),
+            ipv4_address=ipv4.get("Address") or "",
+            ipv4_subnet_mask=ipv4.get("SubnetMask") or "",
+            ipv4_gateway=ipv4.get("Gateway") or "",
+            dns_servers=iface.get("NameServers") or [],
+            mac_address=(iface.get("MACAddress") or "").upper(),
+            hostname=hostname,
+            fqdn=fqdn,
+            vlan_id=vlan.get("VLANId"),
+            vlan_enabled=vlan.get("VLANEnable"),
+            link_status=iface.get("LinkStatus") or "",
+        )
 
     # --- BMC自身の情報 -------------------------------------------------------
     def get_manager_info(self) -> ManagerInfo:

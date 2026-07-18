@@ -109,6 +109,32 @@
     </div>
 
     <div class="card mt-3">
+      <h5 class="card-header">{% trans "Network" %}</h5>
+      <table class="table table-hover attr-table">
+        <tr><th scope="row">{% trans "DHCP" %}</th>
+            <td><span id="bmc-net-dhcp">…</span></td></tr>
+        <tr><th scope="row">{% trans "IPv4 Address" %}</th>
+            <td><span id="bmc-net-ipv4">…</span></td></tr>
+        <tr><th scope="row">{% trans "Subnet Mask" %}</th>
+            <td><span id="bmc-net-mask">…</span></td></tr>
+        <tr><th scope="row">{% trans "Gateway" %}</th>
+            <td><span id="bmc-net-gateway">…</span></td></tr>
+        <tr><th scope="row">{% trans "DNS Servers" %}</th>
+            <td><span id="bmc-net-dns">…</span></td></tr>
+        <tr><th scope="row">{% trans "Hostname" %}</th>
+            <td><span id="bmc-net-hostname">…</span></td></tr>
+        <tr><th scope="row">{% trans "FQDN" %}</th>
+            <td><span id="bmc-net-fqdn">…</span></td></tr>
+        <tr><th scope="row">{% trans "VLAN" %}</th>
+            <td><span id="bmc-net-vlan">…</span></td></tr>
+        <tr><th scope="row">{% trans "MAC Address" %}</th>
+            <td><span id="bmc-net-mac">…</span></td></tr>
+        <tr><th scope="row">{% trans "Link Status" %}</th>
+            <td><span id="bmc-net-link">…</span></td></tr>
+      </table>
+    </div>
+
+    <div class="card mt-3">
       <h5 class="card-header">{% trans "Credentials" %}</h5>
       <table class="table table-hover attr-table">
         {% if secrets_available %}
@@ -243,6 +269,48 @@
       text.textContent = data.error ? i18n.error : (data.state ? data.state.toLowerCase() : i18n.unknown);
     })
     .catch(() => { text.textContent = i18n.unreachable; });
+})();
+
+(function () {
+  const url = "{% url 'plugins:netbox_bmc:bmcendpoint_network' pk=object.pk %}";
+  const i18n = {
+    yes: "{% trans 'Yes' %}",
+    no: "{% trans 'No' %}",
+    disabled: "{% trans 'disabled' %}",
+    error: "{% trans 'error' %}",
+    unreachable: "{% trans 'unreachable' %}",
+  };
+  const placeholder = "—";
+  const fields = ["dhcp", "ipv4", "mask", "gateway", "dns", "hostname", "fqdn", "vlan", "mac", "link"];
+
+  function setAll(text) {
+    fields.forEach((f) => {
+      const el = document.getElementById("bmc-net-" + f);
+      if (el) { el.textContent = text; }
+    });
+  }
+
+  function setField(field, value) {
+    const el = document.getElementById("bmc-net-" + field);
+    if (el) { el.textContent = (value === null || value === undefined || value === "") ? placeholder : value; }
+  }
+
+  fetch(url)
+    .then((r) => r.json())
+    .then((data) => {
+      if (data.error) { setAll(data.error); return; }
+      setField("dhcp", data.dhcp_enabled === true ? i18n.yes : (data.dhcp_enabled === false ? i18n.no : null));
+      setField("ipv4", data.ipv4_address);
+      setField("mask", data.ipv4_subnet_mask);
+      setField("gateway", data.ipv4_gateway);
+      setField("dns", (data.dns_servers || []).join(", "));
+      setField("hostname", data.hostname);
+      setField("fqdn", data.fqdn);
+      setField("vlan", data.vlan_id ? (data.vlan_id + (data.vlan_enabled === false ? " (" + i18n.disabled + ")" : "")) : null);
+      setField("mac", data.mac_address);
+      setField("link", data.link_status);
+    })
+    .catch(() => { setAll(i18n.unreachable); });
 })();
 
 (function () {
