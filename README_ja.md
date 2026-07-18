@@ -42,8 +42,19 @@ Redfish / IPMI 経由のインベントリ同期・電源操作を提供しま�
   - `bmc-synced` タグ付き Module のみ管理。手動登録 Module には触れない
 - **収集コンポーネント**: CPU / Memory / Drive / PSU / Fan / Firmware / PCI デバイス
   - PSU・Fan は Chassis リンク経由、PCIe は PCIeDevices コレクション経由
-- **ベンダー自動検出**: ServiceRoot の `Vendor` / `Oem` キーから Dell / HPE / Lenovo サブクラスドライバへディスパッチ
+- **ベンダー自動検出**: ServiceRoot の `Vendor` / `Oem` キーから Dell / HPE / Lenovo / AMI サブクラスドライバへディスパッチ
 - **電源操作**: on / off / soft / cycle / reset（両プロトコル対応）
+- **Identify LED**: シャーシの Identify ランプを点灯/消灯（ETag/`If-Match` 事前条件を要求する厳格な Redfish 実装にも対応）
+- **BMC ネットワーク設定**: BMC 自身の全ネットワークインターフェース（1つだけでなく複数）を表示。IPv4/IPv6 アドレス・ゲートウェイ、DHCP 状態、VLAN、DNS サーバーを含む。USB ガジェット系インターフェースは除外
+- **センサーテレメトリ**: 温度・Fan回転数・電圧・消費電力の実測値
+- **System Event Log (SEL)**: BMC の直近のイベントログエントリ
+- **BMC ヘルス・ファームウェア**: BMC のヘルス状態とファームウェアバージョン
+- **バックグラウンド同期ジョブ**: Network / Sensors / Event Log / BMC Health は DB に永続化され、エンドポイントごとの「Sync」ボタン、または任意で定期ジョブ（[設定](#設定)参照）により更新されます。画面表示のたびに BMC へ問い合わせるのではなく DB の値を表示します。BMC Firmware は滅多に変わらないため、専用の Sync ボタンではなく Inventory スキャンの一部として更新されます
+- **接続テスト (Test Connection)**: BMC Endpoint 保存前にプロトコル・認証情報を検証
+- **Device Role フィルター**: BMC Endpoint 追加時に Device 候補を Role で絞り込み
+- **Device 画面連携**: BMC Endpoint が存在する Device の画面には「View BMC Endpoint」ボタンとステータスパネルが自動的に表示されます
+- **REST API**: `/api/plugins/bmc/endpoints/` から `BMCEndpoint` の CRUD が可能
+- **英語 / 日本語 UI**（i18n）
 
 ## インストール
 
@@ -120,10 +131,19 @@ docker compose up -d
 
 | キー | デフォルト | 説明 |
 |---|---|---|
-| `sync_interval_minutes` | `0` | 定期一括同期の間隔（分）。`0` で無効。 |
+| `sync_interval_minutes` | `0` | 定期一括 Module インベントリ同期の間隔（分）。`0` で無効。未実装のスタブジョブ。 |
+| `network_sync_interval_minutes` | `0` | 定期一括ネットワーク設定同期の間隔（分）。`0` で無効。 |
+| `sensors_sync_interval_minutes` | `0` | 定期一括センサー同期の間隔（分）。`0` で無効。 |
+| `event_log_sync_interval_minutes` | `0` | 定期一括イベントログ同期の間隔（分）。`0` で無効。 |
+| `manager_health_sync_interval_minutes` | `0` | 定期一括 BMC ヘルス同期の間隔（分）。`0` で無効。 |
 | `default_verify_ssl` | `False` | 新規 BMC Endpoint 作成時の SSL 検証デフォルト値。 |
 | `service_account` | — | バックグラウンドジョブ用サービスアカウント名（netbox-secrets 使用時）。 |
 | `service_private_key_path` | — | サービスアカウントの秘密鍵パス（netbox-secrets 使用時）。 |
+
+各 `*_sync_interval_minutes` 設定は、0 より大きい値を設定すると **全** BMC Endpoint 分の
+定期同期ジョブが有効になります。この設定とは別に、各 Endpoint 詳細画面のカード
+（Network / Sensors / Event Log / BMC Health）にも手動の「Sync」ボタンがあり、そのエンドポイント
+1台分だけをオンデマンドで同期できます。
 
 ## 使い方
 
@@ -148,6 +168,25 @@ Endpoint 詳細画面の電源ボタングループから操作します：
 | **Soft** | ACPI グレースフルシャットダウン |
 | **Cycle** | パワーサイクル（OFF → ON）（確認ダイアログあり） |
 | **Reset** | 強制リセット（確認ダイアログあり） |
+| **Identify On / Off** | シャーシの Identify ランプを点灯/消灯 |
+
+電源状態は常にライブ取得（キャッシュしない）ため、電源操作直後の実際の状態を反映します。
+
+### Network / Sensors / Event Log / BMC Health
+
+それぞれ Endpoint 詳細画面に専用カードがあり、「Sync」ボタンで更新します：
+
+| カード | Sync ボタン | 表示内容 |
+|---|---|---|
+| Network | Sync Network | BMC の全ネットワークインターフェース（IPv4/IPv6 アドレス、DHCP、VLAN、MAC、ホスト名/FQDN、DNSサーバー、リンク状態） |
+| Sensors | Sync Sensors | 温度・Fan回転数・電圧・消費電力の実測値 |
+| Event Log | Sync Event Log | 直近の System Event Log (SEL) エントリ |
+| Sync Status → BMC Health | Sync Manager Health | BMC のヘルス状態 |
+
+Sync ボタンを押すとバックグラウンドジョブがキューに入り、完了するとカードの「Last Sync」
+タイムスタンプが更新され、テーブルに最新データが反映されます。BMC Firmware（Sync Status
+カード内に表示）は滅多に変わらないため、専用の Sync ボタンではなく **Build Modules** 実行時
+（Inventory スキャン）に更新されます。
 
 ### Module 命名規則
 
@@ -241,9 +280,9 @@ BMC 認証情報は以下の順で解決されます：
 
 ## 既知の制限
 
-- REST API（serializers / viewsets）未実装
+- REST API は `BMCEndpoint` の CRUD のみ。同期トリガーやセンサー/イベントログ/ネットワークの参照系は API 未提供
 - マルチノードシャーシ（Systems が複数）未対応
-- 定期一括同期（ScheduledInventorySyncJob）未実装
+- 定期一括 **Module** インベントリ同期（ScheduledInventorySyncJob）未実装（Network/Sensors/Event Log/BMC Health の定期同期は実装済み）
 - KVM / SOL コンソールは旧プラグインから未移植
 - Redfish 準拠度の低い古い BMC（HPE iLO 4 等）での動作未検証
 

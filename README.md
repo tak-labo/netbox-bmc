@@ -42,8 +42,19 @@ Protocol is auto-detected: probes `/redfish/v1` first, then WS-MAN port 16993 (I
   - Only manages `bmc-synced`-tagged Modules; never touches manually created Modules
 - **Collected components**: CPU, Memory, Drive, PSU, Fan, Firmware, PCI devices
   - PSU and Fan collected via Chassis link; PCIe via PCIeDevices collection
-- **Vendor auto-detection**: Dispatches to Dell / HPE / Lenovo subclass drivers based on ServiceRoot `Vendor` / `Oem` keys
+- **Vendor auto-detection**: Dispatches to Dell / HPE / Lenovo / AMI subclass drivers based on ServiceRoot `Vendor` / `Oem` keys
 - **Power control**: on / off / soft / cycle / reset (both protocols)
+- **Identify LED**: turn the chassis identify light on/off (supports ETag/`If-Match` preconditions required by strict Redfish implementations)
+- **BMC network configuration**: shows all of the BMC's own network interfaces (not just one), including IPv6 addresses/gateway, DHCP state, VLAN, DNS servers; USB gadget interfaces are excluded
+- **Sensor telemetry**: temperature, fan RPM, voltage, and power consumption readings
+- **System Event Log (SEL)**: recent BMC event log entries
+- **BMC health & firmware**: BMC health status and firmware version
+- **Background sync jobs**: Network / Sensors / Event Log / BMC Health are persisted to the database and refreshed via a per-endpoint "Sync" button or an optional scheduled job (see [Configure](#configure)) — pages read from the database instead of querying the BMC on every load. BMC Firmware is refreshed as part of the Inventory scan instead, since it rarely changes.
+- **Test Connection**: validate protocol/credentials before saving a new BMC Endpoint
+- **Device Role filter**: narrow the Device picker by role when adding a BMC Endpoint
+- **Device page integration**: a "View BMC Endpoint" button and status panel appear on the Device page automatically when a BMC Endpoint exists
+- **REST API**: CRUD for `BMCEndpoint` via `/api/plugins/bmc/endpoints/`
+- **English / Japanese UI** (i18n)
 
 ## Install
 
@@ -120,10 +131,19 @@ Edit `PLUGINS_CONFIG["netbox_bmc"]` in `configuration.py`:
 
 | Key | Default | Description |
 |---|---|---|
-| `sync_interval_minutes` | `0` | Scheduled bulk sync interval in minutes. `0` disables. |
+| `sync_interval_minutes` | `0` | Scheduled bulk Module inventory sync interval in minutes. `0` disables. Not yet implemented (stub job). |
+| `network_sync_interval_minutes` | `0` | Scheduled bulk network config sync interval in minutes. `0` disables. |
+| `sensors_sync_interval_minutes` | `0` | Scheduled bulk sensor telemetry sync interval in minutes. `0` disables. |
+| `event_log_sync_interval_minutes` | `0` | Scheduled bulk event log sync interval in minutes. `0` disables. |
+| `manager_health_sync_interval_minutes` | `0` | Scheduled bulk BMC health sync interval in minutes. `0` disables. |
 | `default_verify_ssl` | `False` | Default SSL verification for new BMC Endpoints. |
 | `service_account` | — | Service account name for background jobs (netbox-secrets). |
 | `service_private_key_path` | — | Path to private key for service account (netbox-secrets). |
+
+Each `*_sync_interval_minutes` setting, when greater than 0, schedules a recurring job that
+syncs that data point for **all** BMC Endpoints. Independently of these settings, each
+Endpoint detail page also has a manual "Sync" button per card (Network / Sensors / Event Log /
+BMC Health) that syncs just that one endpoint on demand.
 
 ## Use
 
@@ -148,6 +168,26 @@ From the Endpoint detail page, use the power button group:
 | **Soft** | ACPI graceful shutdown |
 | **Cycle** | Power cycle — off then on (confirm dialog) |
 | **Reset** | Hard reset (confirm dialog) |
+| **Identify On / Off** | Turn the chassis identify LED on/off |
+
+Power status is always fetched live (never cached), so it reflects the real state right
+after a power action.
+
+### Network / Sensors / Event Log / BMC Health
+
+Each of these has its own card on the Endpoint detail page with a **Sync** button:
+
+| Card | Sync button | Shows |
+|---|---|---|
+| Network | Sync Network | All BMC network interfaces (IPv4/IPv6 address, DHCP, VLAN, MAC, hostname/FQDN, DNS servers, link status) |
+| Sensors | Sync Sensors | Temperature, fan RPM, voltage, and power consumption readings |
+| Event Log | Sync Event Log | Recent System Event Log (SEL) entries |
+| Sync Status → BMC Health | Sync Manager Health | BMC health status |
+
+Clicking a Sync button queues a background job; once it completes, the card's "Last Sync"
+timestamp updates and the table reflects the new data. BMC Firmware (also shown in the Sync
+Status card) is refreshed as part of running **Build Modules**, not via its own Sync button,
+since it rarely changes.
 
 ### Module Naming
 
@@ -241,9 +281,9 @@ For background jobs (scheduled sync), set `service_account` and `service_private
 
 ## Known Limitations
 
-- REST API (serializers / viewsets) not yet implemented
+- REST API only covers `BMCEndpoint` CRUD; sync triggers and sensor/event-log/network readouts are not exposed via the API
 - Multi-node chassis (multiple `Systems`) not supported
-- Scheduled bulk sync (`ScheduledInventorySyncJob`) not yet implemented
+- Scheduled bulk **Module** inventory sync (`ScheduledInventorySyncJob`) not yet implemented (Network/Sensors/Event Log/BMC Health scheduled sync is implemented)
 - KVM / SOL console not yet ported from the predecessor plugin
 - Old BMCs with low Redfish compliance (e.g. HPE iLO 4) not validated
 
