@@ -1,13 +1,14 @@
 {% extends "generic/object.html" %}
 {% load helpers %}
+{% load i18n %}
 
-{% block title %}Build Modules — {{ object }}{% endblock %}
+{% block title %}{% trans "Build Modules" %} — {{ object }}{% endblock %}
 
 {% block extra_controls %}
   <form method="post" action="{{ scan_url }}" class="d-inline">
     {% csrf_token %}
     <button type="submit" class="btn btn-outline-secondary">
-      <i class="mdi mdi-sync"></i> Rescan
+      <i class="mdi mdi-sync"></i> {% trans "Rescan" %}
     </button>
   </form>
 {% endblock %}
@@ -17,7 +18,7 @@
   <div class="col">
     <div class="card">
       <h5 class="card-header d-flex align-items-center gap-2">
-        Module Preview
+        {% trans "Module Preview" %}
         {% if vendor %}
           <span class="badge bg-secondary">{{ vendor }}</span>
         {% endif %}
@@ -27,7 +28,7 @@
       </h5>
       <div class="card-body pb-2">
         <div class="d-flex flex-wrap gap-3 align-items-center">
-          <span class="text-muted small fw-bold">Type filter:</span>
+          <span class="text-muted small fw-bold">{% trans "Type filter:" %}</span>
           {% for kind, label, default_checked in kind_filters %}
           <div class="form-check form-check-inline mb-0">
             <input class="form-check-input kind-filter"
@@ -47,12 +48,12 @@
             <thead class="table-light">
               <tr>
                 <th style="width:2rem"></th>
-                <th>Status</th>
-                <th>Module Bay</th>
-                <th>Kind</th>
-                <th>Redfish Slot / Path</th>
-                <th>Serial</th>
-                <th>Part</th>
+                <th>{% trans "Status" %}</th>
+                <th>{% trans "Module Bay" %}</th>
+                <th>{% trans "Kind" %}</th>
+                <th>{% trans "Redfish Slot / Path" %}</th>
+                <th>{% trans "Serial" %}</th>
+                <th>{% trans "Part" %}</th>
               </tr>
             </thead>
             <tbody>
@@ -68,18 +69,18 @@
                 </td>
                 <td>
                   {% if entry.status == "new" %}
-                    <span class="badge bg-success">New</span>
+                    <span class="badge bg-success">{% trans "New" %}</span>
                   {% elif entry.status == "updated" %}
-                    <span class="badge bg-warning text-dark">Updated</span>
+                    <span class="badge bg-warning text-dark">{% trans "Updated" %}</span>
                   {% elif entry.status == "removed" %}
-                    <span class="badge bg-danger">Removed</span>
+                    <span class="badge bg-danger">{% trans "Removed" %}</span>
                   {% else %}
-                    <span class="badge bg-secondary">Unchanged</span>
+                    <span class="badge bg-secondary">{% trans "Unchanged" %}</span>
                   {% endif %}
                   {% if not entry.bay_exists %}
                     <span class="badge bg-info text-dark ms-1"
-                          title="ModuleBay will be auto-created">
-                      <i class="mdi mdi-plus-circle-outline"></i> New Bay
+                          title="{% trans 'ModuleBay will be auto-created' %}">
+                      <i class="mdi mdi-plus-circle-outline"></i> {% trans "New Bay" %}
                     </span>
                   {% endif %}
                 </td>
@@ -111,7 +112,7 @@
               {% empty %}
               <tr>
                 <td colspan="7" class="text-center text-muted py-4">
-                  No components detected.
+                  {% trans "No components detected." %}
                 </td>
               </tr>
               {% endfor %}
@@ -119,10 +120,10 @@
           </table>
           <div class="card-footer d-flex justify-content-between align-items-center">
             <a href="{{ object.get_absolute_url }}" class="btn btn-secondary">
-              Cancel
+              {% trans "Cancel" %}
             </a>
             <button type="submit" class="btn btn-primary">
-              <i class="mdi mdi-check-bold"></i> Apply Selected
+              <i class="mdi mdi-check-bold"></i> {% trans "Apply Selected" %}
             </button>
           </div>
         </form>

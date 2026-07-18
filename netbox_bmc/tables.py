@@ -1,4 +1,5 @@
 import django_tables2 as tables
+from django.utils.translation import gettext_lazy as _
 from netbox.tables import NetBoxTable
 
 from .models import BMCEndpoint
@@ -11,14 +12,14 @@ _POWER_STATUS_TEMPLATE = (
 
 class BMCEndpointTable(NetBoxTable):
     device = tables.Column(linkify=True)
-    ip_address = tables.Column(linkify=True, verbose_name="IP Address")
+    ip_address = tables.Column(linkify=True, verbose_name=_("IP Address"))
     protocol = tables.Column()
-    detected_vendor = tables.Column(verbose_name="Vendor")
+    detected_vendor = tables.Column(verbose_name=_("Vendor"))
     last_sync = tables.DateTimeColumn()
-    last_sync_status = tables.Column(verbose_name="Last Sync Status")
+    last_sync_status = tables.Column(verbose_name=_("Last Sync Status"))
     power_status = tables.TemplateColumn(
         template_code=_POWER_STATUS_TEMPLATE,
-        verbose_name="Power",
+        verbose_name=_("Power"),
         orderable=False,
     )
 

@@ -7,6 +7,8 @@ from .models import BMCEndpoint
 urlpatterns = [
     path("endpoints/", views.BMCEndpointListView.as_view(), name="bmcendpoint_list"),
     path("endpoints/add/", views.BMCEndpointEditView.as_view(), name="bmcendpoint_add"),
+    path("endpoints/test-connection/", views.ConnectivityTestView.as_view(),
+         name="bmcendpoint_test_connection"),
     path("endpoints/<int:pk>/", views.BMCEndpointView.as_view(), name="bmcendpoint"),
     path("endpoints/<int:pk>/edit/", views.BMCEndpointEditView.as_view(), name="bmcendpoint_edit"),
     path("endpoints/<int:pk>/delete/", views.BMCEndpointDeleteView.as_view(), name="bmcendpoint_delete"),
