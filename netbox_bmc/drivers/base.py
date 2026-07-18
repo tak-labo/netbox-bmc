@@ -59,6 +59,14 @@ class BaseDriver:
         """
         raise NotImplementedError
 
+    def get_event_log(self, limit: int = 20):
+        """System Event Log (SEL) の直近 limit 件を新しい順に返す。
+
+        戻り値: list[inventory.SelEntry]
+        プロトコルが未対応の場合は NotImplementedError を送出する。
+        """
+        raise NotImplementedError
+
     def close(self) -> None:
         pass
 

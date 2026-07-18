@@ -14,6 +14,7 @@ from ..inventory import (
     Component,
     InventoryResult,
     ManagerInfo,
+    SelEntry,
     SensorReading,
     SystemInfo,
 )
@@ -237,6 +238,30 @@ class IPMIDriver(BaseDriver):
                 status=_health_str(getattr(s, "health", 0)),
             ))
         return readings
+
+    def get_event_log(self, limit: int = 20) -> list[SelEntry]:
+        """pyghmi の get_event_log() (SDR経由でSELを取得) で直近 limit 件を返す。
+
+        SDR依存のため _components_from_sensors と同様に脆い可能性がある
+        (一部BMCファームウェアでNotImplementedError/TypeError等が出ることがある)。
+        """
+        try:
+            records = list(self.cmd.get_event_log())
+        except Exception as e:
+            raise BMCError(f"IPMI get_event_log failed: {e}") from e
+
+        records = records[-limit:]
+        records.reverse()  # 新しい順
+
+        return [
+            SelEntry(
+                created=r.get("timestamp", "") or "",
+                severity=_health_str(r.get("severity", 0)),
+                message=r.get("event", "") or "",
+                sensor_type=r.get("component", "") or "",
+            )
+            for r in records
+        ]
 
     def close(self):
         try:

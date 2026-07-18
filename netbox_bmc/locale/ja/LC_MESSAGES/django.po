@@ -259,6 +259,21 @@ msgstr "測定値"
 msgid "No sensors detected."
 msgstr "センサーが検出されませんでした。"
 
+msgid "Event Log"
+msgstr "イベントログ"
+
+msgid "Time"
+msgstr "時刻"
+
+msgid "Severity"
+msgstr "重大度"
+
+msgid "Message"
+msgstr "メッセージ"
+
+msgid "No event log entries found."
+msgstr "イベントログのエントリが見つかりませんでした。"
+
 msgid "Not supported for this protocol"
 msgstr "このプロトコルではサポートされていません"
 
