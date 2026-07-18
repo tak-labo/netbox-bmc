@@ -222,10 +222,10 @@
     <div class="card">
       <h5 class="card-header d-flex justify-content-between align-items-center">
         {% trans "Sync Status" %}
-        <form method="post" action="{% url 'plugins:netbox_bmc:bmcendpoint_manager_info_sync' pk=object.pk %}" class="d-inline">
+        <form method="post" action="{% url 'plugins:netbox_bmc:bmcendpoint_manager_health_sync' pk=object.pk %}" class="d-inline">
           {% csrf_token %}
           <button type="submit" class="btn btn-outline-secondary btn-sm">
-            <i class="mdi mdi-sync"></i> {% trans "Sync Manager Info" %}
+            <i class="mdi mdi-sync"></i> {% trans "Sync Manager Health" %}
           </button>
         </form>
       </h5>
@@ -241,14 +241,14 @@
         <tr><th scope="row">{% trans "Detected Serial" %}</th>
             <td>{{ object.detected_serial|placeholder }}</td></tr>
         {% endif %}
+        <tr><th scope="row">{% trans "BMC Firmware" %}</th>
+            <td>{{ object.detected_firmware_version|placeholder }}</td></tr>
         <tr><th scope="row">{% trans "Power" %}</th>
             <td><span id="power-status-text">…</span></td></tr>
-        <tr><th scope="row">{% trans "BMC Firmware" %}</th>
-            <td>{{ object.manager_info.firmware_version|placeholder }}</td></tr>
         <tr><th scope="row">{% trans "BMC Health" %}</th>
-            <td>{{ object.manager_info.health|placeholder }}</td></tr>
-        <tr><th scope="row">{% trans "Manager Info Last Sync" %}</th>
-            <td>{{ object.manager_info_last_sync|placeholder }}</td></tr>
+            <td>{{ object.manager_health|placeholder }}</td></tr>
+        <tr><th scope="row">{% trans "Manager Health Last Sync" %}</th>
+            <td>{{ object.manager_health_last_sync|placeholder }}</td></tr>
         <tr><th scope="row">{% trans "Inventory Last Sync" %}</th>
             <td>{{ object.last_sync|placeholder }}</td></tr>
         <tr><th scope="row">{% trans "Inventory Scan Status" %}</th>

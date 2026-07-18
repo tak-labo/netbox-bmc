@@ -9,12 +9,17 @@ class Migration(migrations.Migration):
     operations = [
         migrations.AddField(
             model_name="bmcendpoint",
-            name="manager_info",
-            field=models.JSONField(blank=True, default=dict),
+            name="detected_firmware_version",
+            field=models.CharField(blank=True, max_length=64),
         ),
         migrations.AddField(
             model_name="bmcendpoint",
-            name="manager_info_last_sync",
+            name="manager_health",
+            field=models.CharField(blank=True, max_length=32),
+        ),
+        migrations.AddField(
+            model_name="bmcendpoint",
+            name="manager_health_last_sync",
             field=models.DateTimeField(blank=True, null=True),
         ),
     ]

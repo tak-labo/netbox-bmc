@@ -349,14 +349,14 @@ msgstr "イベントログ同期"
 msgid "Event log sync queued."
 msgstr "イベントログ同期をキューに追加しました。"
 
-msgid "Sync Manager Info"
-msgstr "Manager Info 同期"
+msgid "Sync Manager Health"
+msgstr "ヘルス同期"
 
-msgid "Manager info sync queued."
-msgstr "Manager Info 同期をキューに追加しました。"
+msgid "Manager health sync queued."
+msgstr "ヘルス同期をキューに追加しました。"
 
-msgid "Manager Info Last Sync"
-msgstr "Manager Info 最終同期"
+msgid "Manager Health Last Sync"
+msgstr "ヘルス最終同期"
 
 msgid "Inventory Last Sync"
 msgstr "インベントリ最終同期"

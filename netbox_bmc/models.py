@@ -47,6 +47,9 @@ class BMCEndpoint(JobsMixin, NetBoxModel):
     detected_vendor = models.CharField(max_length=64, blank=True)
     detected_protocol = models.CharField(max_length=16, blank=True)
     detected_serial = models.CharField(max_length=255, blank=True)
+    # BMC ファームウェアバージョンは滅多に変わらないため、専用ジョブではなく
+    # Inventory スキャン (BuildModulesView) の一部として取得・保存する。
+    detected_firmware_version = models.CharField(max_length=64, blank=True)
     last_sync = models.DateTimeField(blank=True, null=True)
     last_sync_status = models.CharField(max_length=255, blank=True)
 
@@ -65,10 +68,10 @@ class BMCEndpoint(JobsMixin, NetBoxModel):
     event_log = models.JSONField(default=list, blank=True)
     event_log_last_sync = models.DateTimeField(blank=True, null=True)
 
-    # BMC自身のファームウェア/ヘルス情報 (ManagerInfoSyncJob / ScheduledManagerInfoSyncJob が更新)
-    # inventory.ManagerInfo を dataclasses.asdict() でシリアライズして保存
-    manager_info = models.JSONField(default=dict, blank=True)
-    manager_info_last_sync = models.DateTimeField(blank=True, null=True)
+    # BMC自身のヘルス状態 (変化しうるため ManagerHealthSyncJob / ScheduledManagerHealthSyncJob
+    # で独立して更新する。ファームウェアバージョンは detected_firmware_version 側)
+    manager_health = models.CharField(max_length=32, blank=True)
+    manager_health_last_sync = models.DateTimeField(blank=True, null=True)
 
     class Meta:
         ordering = ("device",)

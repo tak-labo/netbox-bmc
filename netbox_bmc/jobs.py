@@ -19,8 +19,10 @@ SensorsSyncJob / ScheduledSensorsSyncJob: センサーテレメトリを取得�
 EventLogSyncJob / ScheduledEventLogSyncJob: System Event Log を取得し
   BMCEndpoint.event_log / event_log_last_sync に保存する。
 
-ManagerInfoSyncJob / ScheduledManagerInfoSyncJob: BMC自身のファームウェア/
-  ヘルス情報を取得し BMCEndpoint.manager_info / manager_info_last_sync に保存する。
+ManagerHealthSyncJob / ScheduledManagerHealthSyncJob: BMC自身のヘルス状態を取得し
+  BMCEndpoint.manager_health / manager_health_last_sync に保存する。
+  firmware_version は BuildModulesView の Inventory スキャンで
+  detected_firmware_version に保存される (滅多に変わらないため専用ジョブなし)。
 """
 import logging
 from dataclasses import asdict
@@ -183,45 +185,49 @@ class ScheduledEventLogSyncJob(JobRunner):
         self.job.data = {"message": f"Synced {succeeded}/{len(endpoints)} endpoint(s)."}
 
 
-def _sync_manager_info(endpoint, logger_=logger) -> bool:
-    """1 エンドポイント分の BMC ファームウェア/ヘルス情報を取得して DB に保存する。"""
+def _sync_manager_health(endpoint, logger_=logger) -> bool:
+    """1 エンドポイント分の BMC ヘルス状態を取得して DB に保存する。
+
+    firmware_version は滅多に変わらないため、ここでは扱わない
+    (Inventory スキャン (BuildModulesView) 側で detected_firmware_version に保存される)。
+    """
     try:
         with endpoint.get_driver() as driver:
             info = driver.get_manager_info()
     except Exception as e:
-        logger_.warning("Manager info sync failed for %s: %s", endpoint, e)
+        logger_.warning("Manager health sync failed for %s: %s", endpoint, e)
         return False
 
-    endpoint.manager_info = asdict(info)
-    endpoint.manager_info_last_sync = timezone.now()
-    endpoint.save(update_fields=["manager_info", "manager_info_last_sync"])
+    endpoint.manager_health = info.health
+    endpoint.manager_health_last_sync = timezone.now()
+    endpoint.save(update_fields=["manager_health", "manager_health_last_sync"])
     return True
 
 
-class ManagerInfoSyncJob(JobRunner):
-    """1 エンドポイントの Sync Manager Info ボタンから起動される。"""
+class ManagerHealthSyncJob(JobRunner):
+    """1 エンドポイントの Sync Manager Health ボタンから起動される。"""
 
     class Meta:
-        name = "BMC Manager Info Sync"
+        name = "BMC Manager Health Sync"
 
     def run(self, *args, **kwargs):
         endpoint = self.job.object
         if endpoint is None:
-            self.logger.error("ManagerInfoSyncJob requires a BMCEndpoint instance")
+            self.logger.error("ManagerHealthSyncJob requires a BMCEndpoint instance")
             return
-        if not _sync_manager_info(endpoint, logger_=self.logger):
-            raise RuntimeError(f"Manager info sync failed for {endpoint}")
+        if not _sync_manager_health(endpoint, logger_=self.logger):
+            raise RuntimeError(f"Manager health sync failed for {endpoint}")
 
 
-class ScheduledManagerInfoSyncJob(JobRunner):
-    """全エンドポイントの定期 Manager Info 同期。"""
+class ScheduledManagerHealthSyncJob(JobRunner):
+    """全エンドポイントの定期 Manager Health 同期。"""
 
     class Meta:
-        name = "BMC Manager Info Sync (all devices)"
+        name = "BMC Manager Health Sync (all devices)"
 
     def run(self, *args, **kwargs):
         from .models import BMCEndpoint
 
         endpoints = BMCEndpoint.objects.all()
-        succeeded = sum(_sync_manager_info(e, logger_=self.logger) for e in endpoints)
+        succeeded = sum(_sync_manager_health(e, logger_=self.logger) for e in endpoints)
         self.job.data = {"message": f"Synced {succeeded}/{len(endpoints)} endpoint(s)."}

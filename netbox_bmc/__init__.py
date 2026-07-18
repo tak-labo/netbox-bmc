@@ -29,8 +29,8 @@ class NetBoxBMCConfig(PluginConfig):
         "sensors_sync_interval_minutes": 0,
         # System Event Log の定期一括同期の間隔 (分)。0 で無効。
         "event_log_sync_interval_minutes": 0,
-        # BMC ファームウェア/ヘルス情報の定期一括同期の間隔 (分)。0 で無効。
-        "manager_info_sync_interval_minutes": 0,
+        # BMC ヘルス状態の定期一括同期の間隔 (分)。0 で無効。
+        "manager_health_sync_interval_minutes": 0,
         "default_verify_ssl": False,
         # netbox-secrets バックグラウンドジョブ用サービスアカウント設定
         # (netbox-secrets 使用時のみ必要)
@@ -60,9 +60,9 @@ class NetBoxBMCConfig(PluginConfig):
         if event_log_interval:
             self._enqueue_scheduled_job(jobs.ScheduledEventLogSyncJob, event_log_interval)
 
-        manager_info_interval = settings.get("manager_info_sync_interval_minutes") or 0
-        if manager_info_interval:
-            self._enqueue_scheduled_job(jobs.ScheduledManagerInfoSyncJob, manager_info_interval)
+        manager_health_interval = settings.get("manager_health_sync_interval_minutes") or 0
+        if manager_health_interval:
+            self._enqueue_scheduled_job(jobs.ScheduledManagerHealthSyncJob, manager_health_interval)
 
     @staticmethod
     def _enqueue_scheduled_job(job_class, interval_minutes: int) -> None:

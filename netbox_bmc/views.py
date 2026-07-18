@@ -67,6 +67,11 @@ class BuildModulesView(View):
         try:
             with endpoint.get_driver(request=request) as driver:
                 result = driver.get_inventory()
+                try:
+                    firmware_version = driver.get_manager_info().firmware_version
+                except Exception:
+                    # ファームウェアバージョンが取得できなくても Inventory スキャン自体は継続する
+                    firmware_version = ""
         except Exception as e:
             endpoint.last_sync = timezone.now()
             endpoint.last_sync_status = f"Error: {e}"[:255]
@@ -81,11 +86,13 @@ class BuildModulesView(View):
         endpoint.detected_vendor = result.vendor
         endpoint.detected_protocol = result.protocol
         endpoint.detected_serial = (serial or "")[:255]
+        if firmware_version:
+            endpoint.detected_firmware_version = firmware_version[:64]
         endpoint.last_sync = timezone.now()
         endpoint.last_sync_status = "OK"
         endpoint.save(update_fields=[
             "detected_vendor", "detected_protocol", "detected_serial",
-            "last_sync", "last_sync_status",
+            "detected_firmware_version", "last_sync", "last_sync_status",
         ])
 
         asset_tag = result.system.asset_tag
@@ -294,11 +301,11 @@ class NetworkSyncActionView(View):
         return redirect(endpoint.get_absolute_url())
 
 
-class ManagerInfoSyncActionView(View):
-    """POST: BMC ファームウェア/ヘルス同期ジョブ (ManagerInfoSyncJob) をキューに入れる。
+class ManagerHealthSyncActionView(View):
+    """POST: BMC ヘルス同期ジョブ (ManagerHealthSyncJob) をキューに入れる。
 
-    Sync Status カード内の BMC Firmware / BMC Health は DB
-    (manager_info / manager_info_last_sync) を表示するだけでライブ取得はしない。
+    Sync Status カード内の BMC Health は DB (manager_health / manager_health_last_sync)
+    を表示するだけでライブ取得はしない。BMC Firmware は Inventory スキャンで更新される。
     """
 
     def post(self, request, pk):
@@ -307,9 +314,9 @@ class ManagerInfoSyncActionView(View):
             messages.error(request, _("Permission denied."))
             return redirect(endpoint.get_absolute_url())
 
-        from .jobs import ManagerInfoSyncJob
-        ManagerInfoSyncJob.enqueue(instance=endpoint, user=request.user)
-        messages.success(request, _("Manager info sync queued."))
+        from .jobs import ManagerHealthSyncJob
+        ManagerHealthSyncJob.enqueue(instance=endpoint, user=request.user)
+        messages.success(request, _("Manager health sync queued."))
         return redirect(endpoint.get_absolute_url())
 
 
