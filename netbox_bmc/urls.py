@@ -24,5 +24,6 @@ urlpatterns = [
          name="bmcendpoint_jobs", kwargs={"model": BMCEndpoint}),
     path("endpoints/<int:pk>/power/", views.PowerActionView.as_view(), name="bmcendpoint_power"),
     path("endpoints/<int:pk>/power-status/", views.PowerStatusView.as_view(), name="bmcendpoint_power_status"),
+    path("endpoints/<int:pk>/manager-info/", views.ManagerInfoView.as_view(), name="bmcendpoint_manager_info"),
     path("endpoints/<int:pk>/raw/", views.FetchRawView.as_view(), name="bmcendpoint_raw"),
 ]

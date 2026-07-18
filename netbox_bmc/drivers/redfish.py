@@ -16,7 +16,7 @@ import logging
 import requests
 import urllib3
 
-from ..inventory import Component, InventoryResult, SystemInfo
+from ..inventory import Component, InventoryResult, ManagerInfo, SystemInfo
 from .base import BaseDriver, BMCError
 
 logger = logging.getLogger("netbox_bmc.redfish")
@@ -485,6 +485,21 @@ class RedfishDriver(BaseDriver):
             )
         if r.status_code not in (200, 202, 204):
             raise BMCError(f"Power action failed: HTTP {r.status_code} {r.text[:200]}")
+
+    # --- BMC自身の情報 -------------------------------------------------------
+    def get_manager_info(self) -> ManagerInfo:
+        """Managers/{id} リソース自体から BMC のファームウェア/ヘルスを取得。"""
+        root = self._get("/redfish/v1")
+        managers = self._collection(root, "Managers")
+        if not managers:
+            raise BMCError("No Manager resource found")
+        mgr = managers[0]
+        return ManagerInfo(
+            firmware_version=mgr.get("FirmwareVersion") or "",
+            health=(mgr.get("Status") or {}).get("Health") or "",
+            model=mgr.get("Model") or "",
+            name=mgr.get("Name") or "",
+        )
 
     # --- ベンダー検出 -------------------------------------------------------
     @staticmethod
