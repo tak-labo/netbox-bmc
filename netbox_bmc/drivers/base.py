@@ -39,6 +39,14 @@ class BaseDriver:
         """action: on | off | cycle | reset | soft"""
         raise NotImplementedError
 
+    def get_network_config(self):
+        """BMC 自身のネットワーク設定 (DHCP/静的IP/DNS/ゲートウェイ等) を返す。
+
+        戻り値: inventory.BmcNetworkInterface
+        プロトコルが未対応の場合は NotImplementedError を送出する。
+        """
+        raise NotImplementedError
+
     def close(self) -> None:
         pass
 

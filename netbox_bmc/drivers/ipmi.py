@@ -7,10 +7,11 @@ Redfish より取得できる情報は限定的 (CPU/DIMM の詳細は出ない�
 """
 from __future__ import annotations
 
+import ipaddress
 import logging
 import re as _re
 
-from ..inventory import Component, InventoryResult, SystemInfo
+from ..inventory import BmcNetworkInterface, Component, InventoryResult, SystemInfo
 from .base import BaseDriver, BMCError
 
 logger = logging.getLogger("netbox_bmc.ipmi")
@@ -140,6 +141,46 @@ class IPMIDriver(BaseDriver):
             raise
         except Exception as e:
             raise BMCError(f"IPMI power action failed: {e}") from e
+
+    def get_network_config(self) -> BmcNetworkInterface:
+        """"Get LAN Configuration Parameters" (netfn=0x0c cmd=0x02) 経由で取得。
+
+        DNS サーバはこの IPMI LAN パラメータには含まれないため空のまま。
+        hostname は OEM 依存 (未対応 BMC では例外) のためベストエフォート。
+        """
+        try:
+            channel = self.cmd.get_network_channel()
+            cfg = self.cmd.get_net_configuration(channel)
+        except Exception as e:
+            raise BMCError(f"IPMI network configuration failed: {e}") from e
+
+        ipv4_address = ""
+        ipv4_subnet_mask = ""
+        addr_cidr = cfg.get("ipv4_address")
+        if addr_cidr:
+            try:
+                iface = ipaddress.ip_interface(addr_cidr)
+                ipv4_address = str(iface.ip)
+                ipv4_subnet_mask = str(iface.netmask)
+            except ValueError:
+                ipv4_address = addr_cidr
+
+        hostname = ""
+        try:
+            hostname = self.cmd.get_hostname() or ""
+        except Exception as e:
+            logger.debug("IPMI get_hostname failed (suppressed): %s", e)
+
+        cfg_method = cfg.get("ipv4_configuration")
+        return BmcNetworkInterface(
+            dhcp_enabled=(cfg_method == "DHCP") if cfg_method else None,
+            ipv4_address=ipv4_address,
+            ipv4_subnet_mask=ipv4_subnet_mask,
+            ipv4_gateway=cfg.get("ipv4_gateway") or "",
+            mac_address=(cfg.get("mac_address") or "").upper(),
+            hostname=hostname,
+            vlan_id=cfg.get("vlan_id") or None,
+        )
 
     def close(self):
         try:

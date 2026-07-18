@@ -42,3 +42,23 @@ class InventoryResult:
     vendor: str = ""        # 検出したベンダー名 (Dell, HPE, Lenovo, ...)
     protocol: str = ""      # redfish | ipmi
     raw: dict = field(default_factory=dict)  # デバッグ用の生データ(任意)
+
+
+@dataclass
+class BmcNetworkInterface:
+    """BMC (管理コントローラ) 自身のネットワーク設定。
+
+    get_network_config() の戻り値。InventoryResult とは別に、
+    Power Status と同様にページ表示のたびにライブ取得する (DB には保存しない)。
+    """
+    dhcp_enabled: bool | None = None
+    ipv4_address: str = ""
+    ipv4_subnet_mask: str = ""
+    ipv4_gateway: str = ""
+    dns_servers: list[str] = field(default_factory=list)
+    mac_address: str = ""
+    hostname: str = ""
+    fqdn: str = ""
+    vlan_id: int | None = None
+    vlan_enabled: bool | None = None
+    link_status: str = ""
