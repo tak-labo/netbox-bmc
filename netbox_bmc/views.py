@@ -233,6 +233,31 @@ class PowerActionView(View):
         return redirect(endpoint.get_absolute_url())
 
 
+class IdentifyActionView(View):
+    """POST: Identify LED の点灯/消灯。"""
+
+    def post(self, request, pk):
+        endpoint = get_object_or_404(BMCEndpoint, pk=pk)
+        if not request.user.has_perm("netbox_bmc.change_bmcendpoint"):
+            messages.error(request, _("Permission denied."))
+            return redirect(endpoint.get_absolute_url())
+
+        on = request.POST.get("on") == "true"
+
+        try:
+            with endpoint.get_driver(request=request) as driver:
+                driver.set_identify(on)
+        except Exception as e:
+            messages.error(request, _("Identify action failed: %(error)s") % {"error": e})
+            return redirect(endpoint.get_absolute_url())
+
+        if on:
+            messages.success(request, _("Identify LED turned on."))
+        else:
+            messages.success(request, _("Identify LED turned off."))
+        return redirect(endpoint.get_absolute_url())
+
+
 class PowerStatusView(View):
     """GET: 現在の電源状態を JSON で返す。"""
 
