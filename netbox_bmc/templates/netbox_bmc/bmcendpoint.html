@@ -68,6 +68,23 @@
   </div>
   {% endwith %}
 
+  {% with identify_url="plugins:netbox_bmc:bmcendpoint_identify" %}
+  <div class="btn-group ms-1" role="group">
+    <form method="post" action="{% url identify_url pk=object.pk %}" class="d-inline">
+      {% csrf_token %}<input type="hidden" name="on" value="true">
+      <button type="submit" class="btn btn-outline-info btn-sm" title="{% trans 'Identify On' %}">
+        <i class="mdi mdi-map-marker-alert"></i> {% trans "Identify On" %}
+      </button>
+    </form>
+    <form method="post" action="{% url identify_url pk=object.pk %}" class="d-inline">
+      {% csrf_token %}<input type="hidden" name="on" value="false">
+      <button type="submit" class="btn btn-outline-secondary btn-sm" title="{% trans 'Identify Off' %}">
+        <i class="mdi mdi-map-marker-off"></i> {% trans "Identify Off" %}
+      </button>
+    </form>
+  </div>
+  {% endwith %}
+
   <a href="{% url 'plugins:netbox_bmc:bmcendpoint_raw' pk=object.pk %}?depth=3"
      target="_blank" class="btn btn-outline-secondary ms-1">
     <i class="mdi mdi-code-json"></i> {% trans "Raw Data" %}

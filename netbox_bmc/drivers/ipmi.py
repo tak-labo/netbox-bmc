@@ -176,6 +176,17 @@ class IPMIDriver(BaseDriver):
 
         return ManagerInfo(firmware_version=firmware_version, health=health)
 
+    def set_identify(self, on: bool) -> None:
+        """標準の "Chassis Identify" コマンド (netfn=0x00 cmd=0x04) を利用する。
+
+        pyghmi の set_identify() は既にこの raw コマンドを正しく組み立てる
+        実装を持つため、バイト処理を自前で再実装せずそのまま呼び出す。
+        """
+        try:
+            self.cmd.set_identify(on=on)
+        except Exception as e:
+            raise BMCError(f"IPMI identify action failed: {e}") from e
+
     def close(self):
         try:
             self.cmd.ipmi_session.logout()

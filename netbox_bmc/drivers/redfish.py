@@ -501,6 +501,41 @@ class RedfishDriver(BaseDriver):
             name=mgr.get("Name") or "",
         )
 
+    def set_identify(self, on: bool) -> None:
+        """Chassis.LocationIndicatorActive を PATCH して Identify LED を切り替える。
+
+        旧スキーマの実装 (IndicatorLED 文字列 enum) しか持たない BMC 向けに
+        PATCH が拒否された場合はそちらへフォールバックする。
+        """
+        root = self._get("/redfish/v1")
+        systems = self._collection(root, "Systems")
+        if not systems:
+            raise BMCError("No ComputerSystem found")
+        chassis_refs = systems[0].get("Links", {}).get("Chassis", [])[:1]
+        chassis_ref = chassis_refs[0].get("@odata.id") if chassis_refs else None
+        if not chassis_ref:
+            raise BMCError("No Chassis resource found")
+
+        with self._suppress_ssl_warnings():
+            r = self.session.patch(
+                self._url(chassis_ref),
+                json={"LocationIndicatorActive": on},
+                timeout=self.timeout,
+            )
+        if r.status_code in (200, 202, 204):
+            return
+
+        with self._suppress_ssl_warnings():
+            r2 = self.session.patch(
+                self._url(chassis_ref),
+                json={"IndicatorLED": "Lit" if on else "Off"},
+                timeout=self.timeout,
+            )
+        if r2.status_code not in (200, 202, 204):
+            raise BMCError(
+                f"Identify LED action failed: HTTP {r.status_code} {r.text[:200]}"
+            )
+
     # --- ベンダー検出 -------------------------------------------------------
     @staticmethod
     def detect_vendor(root: dict, sysres: dict | None = None) -> str:

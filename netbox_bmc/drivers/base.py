@@ -47,6 +47,10 @@ class BaseDriver:
         """
         raise NotImplementedError
 
+    def set_identify(self, on: bool) -> None:
+        """シャーシの Identify LED を点灯/消灯する。"""
+        raise NotImplementedError
+
     def close(self) -> None:
         pass
 
