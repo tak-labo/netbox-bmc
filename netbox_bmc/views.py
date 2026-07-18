@@ -277,25 +277,23 @@ class PowerStatusView(View):
         return JsonResponse({"state": state})
 
 
-class NetworkConfigView(View):
-    """GET: BMC 自身のネットワーク設定を JSON で返す (ライブ取得、DB保存なし)。"""
+class NetworkSyncActionView(View):
+    """POST: BMC ネットワーク設定同期ジョブ (NetworkSyncJob) をキューに入れる。
 
-    def get(self, request, pk):
+    Network カードは DB (network_interfaces / network_last_sync) を表示するだけで
+    ライブ取得はしない。実際の取得は非同期ジョブで行い、完了後に DB へ反映される。
+    """
+
+    def post(self, request, pk):
         endpoint = get_object_or_404(BMCEndpoint, pk=pk)
-        if not request.user.has_perm("netbox_bmc.view_bmcendpoint"):
-            return JsonResponse({"error": _("Permission denied.")}, status=403)
+        if not request.user.has_perm("netbox_bmc.change_bmcendpoint"):
+            messages.error(request, _("Permission denied."))
+            return redirect(endpoint.get_absolute_url())
 
-        try:
-            with endpoint.get_driver(request=request) as driver:
-                ifaces = driver.get_network_config()
-        except NotImplementedError:
-            return JsonResponse(
-                {"error": _("Not supported for this protocol")}, status=501,
-            )
-        except Exception as e:
-            return JsonResponse({"error": str(e)}, status=500)
-
-        return JsonResponse([asdict(i) for i in ifaces], safe=False)
+        from .jobs import NetworkSyncJob
+        NetworkSyncJob.enqueue(instance=endpoint, user=request.user)
+        messages.success(request, _("Network sync queued."))
+        return redirect(endpoint.get_absolute_url())
 
 
 class ManagerInfoView(View):

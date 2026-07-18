@@ -20,7 +20,18 @@
     </div>
 
     <div class="card mt-3">
-      <h5 class="card-header">{% trans "Network" %}</h5>
+      <h5 class="card-header d-flex justify-content-between align-items-center">
+        {% trans "Network" %}
+        <form method="post" action="{% url 'plugins:netbox_bmc:bmcendpoint_network_sync' pk=object.pk %}" class="d-inline">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-outline-secondary btn-sm">
+            <i class="mdi mdi-sync"></i> {% trans "Sync Network" %}
+          </button>
+        </form>
+      </h5>
+      <div class="card-body py-2">
+        <span class="text-muted small">{% trans "Last Sync" %}: {{ object.network_last_sync|placeholder }}</span>
+      </div>
       <div class="card-body p-0">
         <div class="table-responsive">
           <table class="table table-hover mb-0">
@@ -41,8 +52,33 @@
                 <th>{% trans "DNS Servers" %}</th>
               </tr>
             </thead>
-            <tbody id="bmc-net-body">
-              <tr><td colspan="13" class="text-center text-muted">…</td></tr>
+            <tbody>
+              {% for iface in object.network_interfaces %}
+              <tr>
+                <td>{{ iface.name|placeholder }}</td>
+                <td>{{ iface.link_status|placeholder }}</td>
+                <td>
+                  {% if iface.dhcp_enabled == True %}{% trans "Yes" %}
+                  {% elif iface.dhcp_enabled == False %}{% trans "No" %}
+                  {% else %}—{% endif %}
+                </td>
+                <td>{{ iface.ipv4_address|placeholder }}</td>
+                <td>{{ iface.ipv4_subnet_mask|placeholder }}</td>
+                <td>{{ iface.ipv4_gateway|placeholder }}</td>
+                <td>{{ iface.ipv6_addresses|join:", "|placeholder }}</td>
+                <td>{{ iface.ipv6_gateway|placeholder }}</td>
+                <td>
+                  {% if iface.vlan_id %}{{ iface.vlan_id }}{% if iface.vlan_enabled == False %} ({% trans "disabled" %}){% endif %}
+                  {% else %}—{% endif %}
+                </td>
+                <td>{{ iface.mac_address|placeholder }}</td>
+                <td>{{ iface.hostname|placeholder }}</td>
+                <td>{{ iface.fqdn|placeholder }}</td>
+                <td>{{ iface.dns_servers|join:", "|placeholder }}</td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="13" class="text-center text-muted">{% trans "No network interfaces found." %}</td></tr>
+              {% endfor %}
             </tbody>
           </table>
         </div>
@@ -272,68 +308,6 @@
       text.textContent = data.error ? i18n.error : (data.state ? data.state.toLowerCase() : i18n.unknown);
     })
     .catch(() => { text.textContent = i18n.unreachable; });
-})();
-
-(function () {
-  const url = "{% url 'plugins:netbox_bmc:bmcendpoint_network' pk=object.pk %}";
-  const body = document.getElementById("bmc-net-body");
-  const i18n = {
-    yes: "{% trans 'Yes' %}",
-    no: "{% trans 'No' %}",
-    disabled: "{% trans 'disabled' %}",
-    error: "{% trans 'error' %}",
-    unreachable: "{% trans 'unreachable' %}",
-    noInterfaces: "{% trans 'No network interfaces found.' %}",
-  };
-
-  function setMessage(text) {
-    body.textContent = "";
-    const tr = document.createElement("tr");
-    const td = document.createElement("td");
-    td.colSpan = 13;
-    td.className = "text-center text-muted";
-    td.textContent = text;
-    tr.appendChild(td);
-    body.appendChild(tr);
-  }
-
-  function cell(text) {
-    const td = document.createElement("td");
-    td.textContent = (text === null || text === undefined || text === "") ? "—" : text;
-    return td;
-  }
-
-  fetch(url)
-    .then((r) => r.json())
-    .then((data) => {
-      if (!Array.isArray(data)) {
-        setMessage(data.error || i18n.error);
-        return;
-      }
-      if (data.length === 0) {
-        setMessage(i18n.noInterfaces);
-        return;
-      }
-      body.textContent = "";
-      data.forEach((iface) => {
-        const tr = document.createElement("tr");
-        tr.appendChild(cell(iface.name));
-        tr.appendChild(cell(iface.link_status));
-        tr.appendChild(cell(iface.dhcp_enabled === true ? i18n.yes : (iface.dhcp_enabled === false ? i18n.no : null)));
-        tr.appendChild(cell(iface.ipv4_address));
-        tr.appendChild(cell(iface.ipv4_subnet_mask));
-        tr.appendChild(cell(iface.ipv4_gateway));
-        tr.appendChild(cell((iface.ipv6_addresses || []).join(", ")));
-        tr.appendChild(cell(iface.ipv6_gateway));
-        tr.appendChild(cell(iface.vlan_id ? (iface.vlan_id + (iface.vlan_enabled === false ? " (" + i18n.disabled + ")" : "")) : null));
-        tr.appendChild(cell(iface.mac_address));
-        tr.appendChild(cell(iface.hostname));
-        tr.appendChild(cell(iface.fqdn));
-        tr.appendChild(cell((iface.dns_servers || []).join(", ")));
-        body.appendChild(tr);
-      });
-    })
-    .catch(() => { setMessage(i18n.unreachable); });
 })();
 
 (function () {

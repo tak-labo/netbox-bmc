@@ -23,6 +23,8 @@ class NetBoxBMCConfig(PluginConfig):
     default_settings = {
         # 定期一括同期の間隔 (分)。0 で無効。
         "sync_interval_minutes": 0,
+        # BMC ネットワーク設定の定期一括同期の間隔 (分)。0 で無効。
+        "network_sync_interval_minutes": 0,
         "default_verify_ssl": False,
         # netbox-secrets バックグラウンドジョブ用サービスアカウント設定
         # (netbox-secrets 使用時のみ必要)
@@ -32,16 +34,22 @@ class NetBoxBMCConfig(PluginConfig):
 
     def ready(self):
         super().ready()
-        from . import jobs  # noqa: F401
+        from . import jobs
 
-        interval = (getattr(self, "settings", None) or {}).get("sync_interval_minutes") or 0
+        settings = getattr(self, "settings", None) or {}
+
+        interval = settings.get("sync_interval_minutes") or 0
         if interval:
-            self._enqueue_scheduled_sync(interval)
+            self._enqueue_scheduled_job(jobs.ScheduledInventorySyncJob, interval)
+
+        network_interval = settings.get("network_sync_interval_minutes") or 0
+        if network_interval:
+            self._enqueue_scheduled_job(jobs.ScheduledNetworkSyncJob, network_interval)
 
     @staticmethod
-    def _enqueue_scheduled_sync(interval_minutes: int) -> None:
+    def _enqueue_scheduled_job(job_class, interval_minutes: int) -> None:
         """
-        ScheduledInventorySyncJob の定期ジョブを登録する。
+        指定した JobRunner の定期ジョブを登録する。
 
         ready() は workers / web プロセスの起動ごとに呼ばれるため、
         既に pending / scheduled / running の同名ジョブがあればスキップして
@@ -50,8 +58,6 @@ class NetBoxBMCConfig(PluginConfig):
         import logging
 
         from django.db import DatabaseError
-
-        from .jobs import ScheduledInventorySyncJob
 
         logger = logging.getLogger("netbox_bmc")
 
@@ -62,13 +68,13 @@ class NetBoxBMCConfig(PluginConfig):
             from django.utils import timezone
 
             active = Job.objects.filter(
-                name=ScheduledInventorySyncJob.Meta.name,
+                name=job_class.Meta.name,
                 status__in=("pending", "scheduled", "running"),
             ).exists()
             if active:
                 return
 
-            ScheduledInventorySyncJob.enqueue(
+            job_class.enqueue(
                 instance=None,
                 schedule_at=timezone.now() + timedelta(minutes=interval_minutes),
                 interval=interval_minutes,
@@ -77,7 +83,7 @@ class NetBoxBMCConfig(PluginConfig):
             # マイグレーション前: Job テーブルが存在しない
             pass
         except Exception as e:
-            logger.warning("Failed to schedule recurring inventory sync: %s", e)
+            logger.warning("Failed to schedule recurring job %s: %s", job_class.Meta.name, e)
 
 
 config = NetBoxBMCConfig

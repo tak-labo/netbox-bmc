@@ -50,6 +50,11 @@ class BMCEndpoint(JobsMixin, NetBoxModel):
     last_sync = models.DateTimeField(blank=True, null=True)
     last_sync_status = models.CharField(max_length=255, blank=True)
 
+    # BMC 自身のネットワーク設定 (NetworkSyncJob / ScheduledNetworkSyncJob が更新)
+    # inventory.BmcNetworkInterface のリストを dataclasses.asdict() でシリアライズして保存
+    network_interfaces = models.JSONField(default=list, blank=True)
+    network_last_sync = models.DateTimeField(blank=True, null=True)
+
     class Meta:
         ordering = ("device",)
         verbose_name = "BMC endpoint"

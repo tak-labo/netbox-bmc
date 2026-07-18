@@ -334,6 +334,12 @@ msgstr "イベントログのエントリが見つかりませんでした。"
 msgid "Not supported for this protocol"
 msgstr "このプロトコルではサポートされていません"
 
+msgid "Sync Network"
+msgstr "ネットワーク同期"
+
+msgid "Network sync queued."
+msgstr "ネットワーク同期をキューに追加しました。"
+
 msgid "Yes"
 msgstr "はい"
 
