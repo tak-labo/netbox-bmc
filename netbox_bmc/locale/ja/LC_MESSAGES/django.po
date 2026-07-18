@@ -226,9 +226,6 @@ msgstr "BMC パスワード"
 msgid "Falling back to plaintext fields."
 msgstr "プレーンテキストフィールドにフォールバックしています。"
 
-msgid "credentials stored in plaintext fields below."
-msgstr "認証情報は下記のプレーンテキストフィールドに保存されています。"
-
 msgid "Username (fallback)"
 msgstr "ユーザー名(フォールバック)"
 
