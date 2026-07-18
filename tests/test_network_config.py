@@ -4,7 +4,6 @@ from unittest.mock import MagicMock, patch
 from netbox_bmc.drivers.ipmi import IPMIDriver
 from netbox_bmc.drivers.redfish import RedfishDriver
 
-
 # --- Redfish -----------------------------------------------------------
 
 def make_redfish_driver():

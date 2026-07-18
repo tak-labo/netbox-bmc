@@ -11,7 +11,15 @@ import ipaddress
 import logging
 import re as _re
 
-from ..inventory import BmcNetworkInterface, Component, InventoryResult, SystemInfo
+from ..inventory import (
+    BmcNetworkInterface,
+    Component,
+    InventoryResult,
+    ManagerInfo,
+    SelEntry,
+    SensorReading,
+    SystemInfo,
+)
 from .base import BaseDriver, BMCError
 
 logger = logging.getLogger("netbox_bmc.ipmi")
@@ -25,6 +33,27 @@ _CHASSIS_CTRL = {
     "reset": 0x03,  # Hard Reset
     "soft":  0x05,  # Soft-off via ACPI
 }
+
+# SDR センサー type -> SensorReading.kind
+_SENSOR_KIND_MAP = {
+    "Temperature": "temperature",
+    "Fan": "fan",
+    "Voltage": "voltage",
+    "Power Supply": "power",
+    "Power Unit": "power",
+    "Current": "power",
+}
+
+
+def _health_str(health_bits: int) -> str:
+    """pyghmi の const.Health ビットマスクを人間向け文字列に変換する。"""
+    if health_bits & 4:
+        return "Failed"
+    if health_bits & 2:
+        return "Critical"
+    if health_bits & 1:
+        return "Warning"
+    return "OK"
 
 
 def _make_safe_command_class(command_module):
@@ -181,6 +210,100 @@ class IPMIDriver(BaseDriver):
             hostname=hostname,
             vlan_id=cfg.get("vlan_id") or None,
         )
+
+    def get_manager_info(self) -> ManagerInfo:
+        """"Get Device ID" (netfn=0x06 cmd=0x01, 標準IPMI・OEM非依存) でファームウェア
+        バージョンを取得し、pyghmi の get_health() でヘルスを取得する。
+        """
+        try:
+            resp = self.cmd.raw_command(netfn=0x06, command=0x01)
+            if "error" in resp:
+                raise BMCError(resp["error"])
+            data = resp["data"]
+            major = data[2] & 0b1111111
+            minor_hi = (data[3] >> 4) & 0b1111
+            minor_lo = data[3] & 0b1111
+            firmware_version = f"{major}.{minor_hi}{minor_lo}"
+        except BMCError:
+            raise
+        except Exception as e:
+            raise BMCError(f"IPMI Get Device ID failed: {e}") from e
+
+        health = ""
+        try:
+            summary = self.cmd.get_health()
+            health_bits = summary.get("health", 0)
+            if health_bits & 4:
+                health = "Failed"
+            elif health_bits & 2:
+                health = "Critical"
+            elif health_bits & 1:
+                health = "Warning"
+            else:
+                health = "OK"
+        except Exception as e:
+            logger.debug("IPMI get_health failed (suppressed): %s", e)
+
+        return ManagerInfo(firmware_version=firmware_version, health=health)
+
+    def set_identify(self, on: bool) -> None:
+        """標準の "Chassis Identify" コマンド (netfn=0x00 cmd=0x04) を利用する。
+
+        pyghmi の set_identify() は既にこの raw コマンドを正しく組み立てる
+        実装を持つため、バイト処理を自前で再実装せずそのまま呼び出す。
+        """
+        try:
+            self.cmd.set_identify(on=on)
+        except Exception as e:
+            raise BMCError(f"IPMI identify action failed: {e}") from e
+
+    def get_sensors(self) -> list[SensorReading]:
+        """get_sensor_data() (既に _components_from_sensors で呼んでいる) の
+        各読み取りから数値 (温度/Fan回転数/電圧/消費電力) を保持して返す。
+        """
+        try:
+            sensors = list(self.cmd.get_sensor_data())
+        except Exception as e:
+            raise BMCError(f"IPMI get_sensor_data failed: {e}") from e
+
+        readings: list[SensorReading] = []
+        for s in sensors:
+            stype = getattr(s, "type", "") or ""
+            kind = _SENSOR_KIND_MAP.get(stype)
+            if kind is None:
+                continue
+            readings.append(SensorReading(
+                name=getattr(s, "name", "") or "",
+                kind=kind,
+                value=getattr(s, "value", None),
+                units=getattr(s, "units", "") or "",
+                status=_health_str(getattr(s, "health", 0)),
+            ))
+        return readings
+
+    def get_event_log(self, limit: int = 20) -> list[SelEntry]:
+        """pyghmi の get_event_log() (SDR経由でSELを取得) で直近 limit 件を返す。
+
+        SDR依存のため _components_from_sensors と同様に脆い可能性がある
+        (一部BMCファームウェアでNotImplementedError/TypeError等が出ることがある)。
+        """
+        try:
+            records = list(self.cmd.get_event_log())
+        except Exception as e:
+            raise BMCError(f"IPMI get_event_log failed: {e}") from e
+
+        records = records[-limit:]
+        records.reverse()  # 新しい順
+
+        return [
+            SelEntry(
+                created=r.get("timestamp", "") or "",
+                severity=_health_str(r.get("severity", 0)),
+                message=r.get("event", "") or "",
+                sensor_type=r.get("component", "") or "",
+            )
+            for r in records
+        ]
 
     def close(self):
         try:

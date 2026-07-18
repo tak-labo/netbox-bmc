@@ -68,6 +68,23 @@
   </div>
   {% endwith %}
 
+  {% with identify_url="plugins:netbox_bmc:bmcendpoint_identify" %}
+  <div class="btn-group ms-1" role="group">
+    <form method="post" action="{% url identify_url pk=object.pk %}" class="d-inline">
+      {% csrf_token %}<input type="hidden" name="on" value="true">
+      <button type="submit" class="btn btn-outline-info btn-sm" title="{% trans 'Identify On' %}">
+        <i class="mdi mdi-map-marker-alert"></i> {% trans "Identify On" %}
+      </button>
+    </form>
+    <form method="post" action="{% url identify_url pk=object.pk %}" class="d-inline">
+      {% csrf_token %}<input type="hidden" name="on" value="false">
+      <button type="submit" class="btn btn-outline-secondary btn-sm" title="{% trans 'Identify Off' %}">
+        <i class="mdi mdi-map-marker-off"></i> {% trans "Identify Off" %}
+      </button>
+    </form>
+  </div>
+  {% endwith %}
+
   <a href="{% url 'plugins:netbox_bmc:bmcendpoint_raw' pk=object.pk %}?depth=3"
      target="_blank" class="btn btn-outline-secondary ms-1">
     <i class="mdi mdi-code-json"></i> {% trans "Raw Data" %}
@@ -179,11 +196,56 @@
         {% endif %}
         <tr><th scope="row">{% trans "Power" %}</th>
             <td><span id="power-status-text">…</span></td></tr>
+        <tr><th scope="row">{% trans "BMC Firmware" %}</th>
+            <td><span id="bmc-manager-firmware">…</span></td></tr>
+        <tr><th scope="row">{% trans "BMC Health" %}</th>
+            <td><span id="bmc-manager-health">…</span></td></tr>
         <tr><th scope="row">{% trans "Last Sync" %}</th>
             <td>{{ object.last_sync|placeholder }}</td></tr>
         <tr><th scope="row">{% trans "Status" %}</th>
             <td>{{ object.last_sync_status|placeholder }}</td></tr>
       </table>
+    </div>
+
+    <div class="card mt-3">
+      <h5 class="card-header">{% trans "Sensors" %}</h5>
+      <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>{% trans "Name" %}</th>
+              <th>{% trans "Kind" %}</th>
+              <th>{% trans "Reading" %}</th>
+              <th>{% trans "Status" %}</th>
+            </tr>
+          </thead>
+          <tbody id="bmc-sensors-body">
+            <tr><td colspan="4" class="text-center text-muted">…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row mt-3">
+  <div class="col">
+    <div class="card">
+      <h5 class="card-header">{% trans "Event Log" %}</h5>
+      <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>{% trans "Time" %}</th>
+              <th>{% trans "Severity" %}</th>
+              <th>{% trans "Message" %}</th>
+            </tr>
+          </thead>
+          <tbody id="bmc-event-log-body">
+            <tr><td colspan="3" class="text-center text-muted">…</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 </div>
@@ -249,6 +311,135 @@
       setField("link", data.link_status);
     })
     .catch(() => { setAll(i18n.unreachable); });
+})();
+
+(function () {
+  const url = "{% url 'plugins:netbox_bmc:bmcendpoint_manager_info' pk=object.pk %}";
+  const fwText = document.getElementById("bmc-manager-firmware");
+  const healthText = document.getElementById("bmc-manager-health");
+  const i18n = {
+    error: "{% trans 'error' %}",
+    unreachable: "{% trans 'unreachable' %}",
+  };
+  const placeholder = "—";
+
+  fetch(url)
+    .then((r) => r.json())
+    .then((data) => {
+      if (data.error) {
+        fwText.textContent = data.error;
+        healthText.textContent = data.error;
+        return;
+      }
+      fwText.textContent = data.firmware_version || placeholder;
+      healthText.textContent = data.health || placeholder;
+    })
+    .catch(() => {
+      fwText.textContent = i18n.unreachable;
+      healthText.textContent = i18n.unreachable;
+    });
+})();
+
+(function () {
+  const url = "{% url 'plugins:netbox_bmc:bmcendpoint_sensors' pk=object.pk %}";
+  const body = document.getElementById("bmc-sensors-body");
+  const i18n = {
+    error: "{% trans 'error' %}",
+    unreachable: "{% trans 'unreachable' %}",
+    noSensors: "{% trans 'No sensors detected.' %}",
+  };
+
+  function setMessage(text) {
+    body.textContent = "";
+    const tr = document.createElement("tr");
+    const td = document.createElement("td");
+    td.colSpan = 4;
+    td.className = "text-center text-muted";
+    td.textContent = text;
+    tr.appendChild(td);
+    body.appendChild(tr);
+  }
+
+  function cell(text) {
+    const td = document.createElement("td");
+    td.textContent = (text === null || text === undefined || text === "") ? "—" : text;
+    return td;
+  }
+
+  fetch(url)
+    .then((r) => r.json())
+    .then((data) => {
+      if (!Array.isArray(data)) {
+        setMessage(data.error || i18n.error);
+        return;
+      }
+      if (data.length === 0) {
+        setMessage(i18n.noSensors);
+        return;
+      }
+      body.textContent = "";
+      data.forEach((reading) => {
+        const tr = document.createElement("tr");
+        tr.appendChild(cell(reading.name));
+        tr.appendChild(cell(reading.kind));
+        const valueText = (reading.value === null || reading.value === undefined)
+          ? null
+          : reading.value + (reading.units ? (" " + reading.units) : "");
+        tr.appendChild(cell(valueText));
+        tr.appendChild(cell(reading.status));
+        body.appendChild(tr);
+      });
+    })
+    .catch(() => { setMessage(i18n.unreachable); });
+})();
+
+(function () {
+  const url = "{% url 'plugins:netbox_bmc:bmcendpoint_event_log' pk=object.pk %}";
+  const body = document.getElementById("bmc-event-log-body");
+  const i18n = {
+    error: "{% trans 'error' %}",
+    unreachable: "{% trans 'unreachable' %}",
+    noEntries: "{% trans 'No event log entries found.' %}",
+  };
+
+  function setMessage(text) {
+    body.textContent = "";
+    const tr = document.createElement("tr");
+    const td = document.createElement("td");
+    td.colSpan = 3;
+    td.className = "text-center text-muted";
+    td.textContent = text;
+    tr.appendChild(td);
+    body.appendChild(tr);
+  }
+
+  function cell(text) {
+    const td = document.createElement("td");
+    td.textContent = (text === null || text === undefined || text === "") ? "—" : text;
+    return td;
+  }
+
+  fetch(url)
+    .then((r) => r.json())
+    .then((data) => {
+      if (!Array.isArray(data)) {
+        setMessage(data.error || i18n.error);
+        return;
+      }
+      if (data.length === 0) {
+        setMessage(i18n.noEntries);
+        return;
+      }
+      body.textContent = "";
+      data.forEach((entry) => {
+        const tr = document.createElement("tr");
+        tr.appendChild(cell(entry.created));
+        tr.appendChild(cell(entry.severity));
+        tr.appendChild(cell(entry.message));
+        body.appendChild(tr);
+      });
+    })
+    .catch(() => { setMessage(i18n.unreachable); });
 })();
 </script>
 {% endblock %}
