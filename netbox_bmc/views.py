@@ -287,7 +287,7 @@ class NetworkConfigView(View):
 
         try:
             with endpoint.get_driver(request=request) as driver:
-                net = driver.get_network_config()
+                ifaces = driver.get_network_config()
         except NotImplementedError:
             return JsonResponse(
                 {"error": _("Not supported for this protocol")}, status=501,
@@ -295,7 +295,7 @@ class NetworkConfigView(View):
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=500)
 
-        return JsonResponse(asdict(net))
+        return JsonResponse([asdict(i) for i in ifaces], safe=False)
 
 
 class ManagerInfoView(View):

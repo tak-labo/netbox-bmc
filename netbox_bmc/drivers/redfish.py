@@ -495,11 +495,15 @@ class RedfishDriver(BaseDriver):
             raise BMCError(f"Power action failed: HTTP {r.status_code} {r.text[:200]}")
 
     # --- ネットワーク設定 ---------------------------------------------------
-    def get_network_config(self) -> BmcNetworkInterface:
+    def get_network_config(self) -> list[BmcNetworkInterface]:
         """Managers/{id}/EthernetInterfaces から BMC 自身のネットワーク設定を取得。
 
         ComputerSystem 側の EthernetInterfaces (ホストOSのNIC) とは別リソース。
         パスはハードコードせず ServiceRoot -> Managers -> EthernetInterfaces を辿る。
+
+        BMC は専用ポート/ホストと共有するポート/ボンディング用の仮想IF等、
+        複数のインターフェースを持つことがあるため全件を返す
+        (USB 経由の管理IF (Id が "usb" で始まるもの) は物理LANポートではないため除外)。
         """
         root = self._get("/redfish/v1")
         managers = self._collection(root, "Managers")
@@ -510,37 +514,50 @@ class RedfishDriver(BaseDriver):
         ifaces = self._collection(mgr, "EthernetInterfaces")
         if not ifaces:
             raise BMCError("No Manager EthernetInterfaces found")
-        iface = next(
-            (i for i in ifaces if i.get("LinkStatus") == "LinkUp"),
-            ifaces[0],
-        )
+        ifaces = [
+            i for i in ifaces
+            if not (i.get("Id") or i.get("Name") or "").lower().startswith("usb")
+        ]
 
-        ipv4 = (iface.get("IPv4Addresses") or [{}])[0]
-        vlan = iface.get("VLAN") or {}
-        dhcp = iface.get("DHCPv4") or {}
+        netproto_ref = mgr.get("NetworkProtocol", {}).get("@odata.id")
+        netproto = self._get_optional(netproto_ref) if netproto_ref else None
 
-        hostname = iface.get("HostName") or ""
-        fqdn = iface.get("FQDN") or ""
-        if not (hostname and fqdn):
-            netproto_ref = mgr.get("NetworkProtocol", {}).get("@odata.id")
-            netproto = self._get_optional(netproto_ref) if netproto_ref else None
-            if netproto:
+        results = []
+        for iface in ifaces:
+            ipv4 = (iface.get("IPv4Addresses") or [{}])[0]
+            vlan = iface.get("VLAN") or {}
+            dhcp = iface.get("DHCPv4") or {}
+
+            ipv6_addresses = [
+                f"{a['Address']}/{a['PrefixLength']}" if a.get("PrefixLength") else a["Address"]
+                for a in (iface.get("IPv6Addresses") or [])
+                if a.get("Address")
+            ]
+            ipv6_gateway = iface.get("IPv6DefaultGateway") or ""
+
+            hostname = iface.get("HostName") or ""
+            fqdn = iface.get("FQDN") or ""
+            if not (hostname and fqdn) and netproto:
                 hostname = hostname or netproto.get("HostName") or ""
                 fqdn = fqdn or netproto.get("FQDN") or ""
 
-        return BmcNetworkInterface(
-            dhcp_enabled=dhcp.get("DHCPEnabled"),
-            ipv4_address=ipv4.get("Address") or "",
-            ipv4_subnet_mask=ipv4.get("SubnetMask") or "",
-            ipv4_gateway=ipv4.get("Gateway") or "",
-            dns_servers=iface.get("NameServers") or [],
-            mac_address=(iface.get("MACAddress") or "").upper(),
-            hostname=hostname,
-            fqdn=fqdn,
-            vlan_id=vlan.get("VLANId"),
-            vlan_enabled=vlan.get("VLANEnable"),
-            link_status=iface.get("LinkStatus") or "",
-        )
+            results.append(BmcNetworkInterface(
+                name=iface.get("Id") or iface.get("Name") or "",
+                dhcp_enabled=dhcp.get("DHCPEnabled"),
+                ipv4_address=ipv4.get("Address") or "",
+                ipv4_subnet_mask=ipv4.get("SubnetMask") or "",
+                ipv4_gateway=ipv4.get("Gateway") or "",
+                ipv6_addresses=ipv6_addresses,
+                ipv6_gateway=ipv6_gateway,
+                dns_servers=iface.get("NameServers") or [],
+                mac_address=(iface.get("MACAddress") or "").upper(),
+                hostname=hostname,
+                fqdn=fqdn,
+                vlan_id=vlan.get("VLANId"),
+                vlan_enabled=vlan.get("VLANEnable"),
+                link_status=iface.get("LinkStatus") or "",
+            ))
+        return results
 
     # --- BMC自身の情報 -------------------------------------------------------
     def get_manager_info(self) -> ManagerInfo:

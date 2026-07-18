@@ -171,11 +171,14 @@ class IPMIDriver(BaseDriver):
         except Exception as e:
             raise BMCError(f"IPMI power action failed: {e}") from e
 
-    def get_network_config(self) -> BmcNetworkInterface:
+    def get_network_config(self) -> list[BmcNetworkInterface]:
         """"Get LAN Configuration Parameters" (netfn=0x0c cmd=0x02) 経由で取得。
 
+        IPMI の LAN チャンネルは通常1系統のみ管理対象となるため要素数1の
+        リストを返す (Redfish 側は複数インターフェースを返せるため list に統一)。
         DNS サーバはこの IPMI LAN パラメータには含まれないため空のまま。
-        hostname は OEM 依存 (未対応 BMC では例外) のためベストエフォート。
+        hostname / IPv6 は OEM・実装依存 (未対応 BMC では例外/空) のため
+        いずれもベストエフォート。
         """
         try:
             channel = self.cmd.get_network_channel()
@@ -200,16 +203,28 @@ class IPMIDriver(BaseDriver):
         except Exception as e:
             logger.debug("IPMI get_hostname failed (suppressed): %s", e)
 
+        ipv6_addresses: list[str] = []
+        ipv6_gateway = ""
+        try:
+            cfg6 = self.cmd.get_net6_configuration(channel)
+            ipv6_addresses = cfg6.get("static_addrs") or []
+            ipv6_gateway = cfg6.get("static_gateway") or ""
+        except Exception as e:
+            logger.debug("IPMI get_net6_configuration failed (suppressed): %s", e)
+
         cfg_method = cfg.get("ipv4_configuration")
-        return BmcNetworkInterface(
+        return [BmcNetworkInterface(
+            name=f"channel{channel}",
             dhcp_enabled=(cfg_method == "DHCP") if cfg_method else None,
             ipv4_address=ipv4_address,
             ipv4_subnet_mask=ipv4_subnet_mask,
             ipv4_gateway=cfg.get("ipv4_gateway") or "",
+            ipv6_addresses=ipv6_addresses,
+            ipv6_gateway=ipv6_gateway,
             mac_address=(cfg.get("mac_address") or "").upper(),
             hostname=hostname,
             vlan_id=cfg.get("vlan_id") or None,
-        )
+        )]
 
     def get_manager_info(self) -> ManagerInfo:
         """"Get Device ID" (netfn=0x06 cmd=0x01, 標準IPMI・OEM非依存) でファームウェア
