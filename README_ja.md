@@ -278,6 +278,8 @@ BMC 認証情報は以下の順で解決されます：
 
 バックグラウンドジョブ（定期同期）では、`PLUGINS_CONFIG` に `service_account` と `service_private_key_path` を設定することで HTTP セッションなしで復号できます。
 
+SecretRole/UserKey/サービスアカウントのセットアップ手順とセッションアンロックの流れは [docs/NETBOX_SECRETS.md](docs/NETBOX_SECRETS.md) を参照してください。
+
 ## 既知の制限
 
 - REST API は `BMCEndpoint` の CRUD のみ。同期トリガーやセンサー/イベントログ/ネットワークの参照系は API 未提供

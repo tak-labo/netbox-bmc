@@ -251,7 +251,8 @@ erDiagram
 ## 5. 認証情報解決
 
 `BMCEndpoint.get_driver(request=None)` がドライバ生成の唯一の入口。認証情報の解決は
-`credentials.py:get_credential()` が担う。
+`credentials.py:get_credential()` が担う。netbox-secrets のセットアップ手順・実際の
+動作検証手順は [NETBOX_SECRETS.md](NETBOX_SECRETS.md) を参照。
 
 ```mermaid
 flowchart TD

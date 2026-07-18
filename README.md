@@ -279,6 +279,8 @@ netbox-bmc resolves BMC credentials in the following order:
 
 For background jobs (scheduled sync), set `service_account` and `service_private_key_path` in `PLUGINS_CONFIG` so the job can decrypt secrets without an HTTP session.
 
+See [docs/NETBOX_SECRETS.md](docs/NETBOX_SECRETS.md) (Japanese) for a full setup walkthrough, including SecretRole/UserKey/service-account setup and the session-unlock flow.
+
 ## Known Limitations
 
 - REST API only covers `BMCEndpoint` CRUD; sync triggers and sensor/event-log/network readouts are not exposed via the API
