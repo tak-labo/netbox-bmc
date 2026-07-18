@@ -2,6 +2,26 @@
 
 ## [Unreleased]
 
+## [0.4.27] - 2026-07-18
+
+- fix(ipmi): purge stale pyghmi session cache before constructing each `IPMIDriver` to avoid
+  a session-reuse crash. pyghmi caches sessions process-wide keyed by
+  (bmc, userid, password, port), and since this plugin constructs a new driver per HTTP
+  request, the reused session's `logoutexpiry`/`logging` state could desync and crash with
+  `TypeError: '<' not supported between instances of 'float' and 'NoneType'` — surfacing as
+  Power Status always showing "error" for IPMI-protocol endpoints, permanently until the
+  worker process restarted. Verified with 10 consecutive successful calls against a real
+  IPMI-capable BMC (previously failed 9/10) (#62)
+- fix(drivers): pass `verify=` explicitly on every Redfish/AMT HTTP request instead of relying
+  solely on `session.verify` — `requests` silently substitutes `REQUESTS_CA_BUNDLE` /
+  `CURL_CA_BUNDLE` from the environment when the per-call `verify` kwarg isn't set explicitly,
+  which overrode `verify_ssl=False` and caused Test Connection/BMC access to fail with
+  `SSLCertVerificationError` even with "Verify SSL" unchecked, in any environment where one of
+  those env vars happens to point at a custom CA bundle (#60)
+- fix(forms): wire up the previously-unused `default_verify_ssl` plugin setting as the initial
+  value of the `verify_ssl` checkbox when adding a new BMC Endpoint (#61)
+- Update copyright year and owner in LICENSE file (#59)
+
 ## [0.4.26] - 2026-07-18
 
 - fix(credentials): decrypt the netbox-secrets session-key path via the `SessionKey` model
