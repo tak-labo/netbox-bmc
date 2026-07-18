@@ -1,5 +1,6 @@
 from dcim.models import Device, DeviceRole
 from django import forms
+from django.conf import settings
 from django.utils.translation import gettext_lazy as _
 from ipam.models import IPAddress
 from netbox.forms import NetBoxModelForm
@@ -43,3 +44,9 @@ class BMCEndpointForm(NetBoxModelForm):
             "device", "ip_address", "port", "protocol",
             "username", "password", "verify_ssl", "tags",
         )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance.pk is None:
+            plugin_cfg = settings.PLUGINS_CONFIG.get("netbox_bmc", {})
+            self.fields["verify_ssl"].initial = plugin_cfg.get("default_verify_ssl", False)
