@@ -27,15 +27,11 @@
           <td>
             {% if secrets_available %}
               {% if secret_found %}
-                <span class="badge bg-success">
-                  <i class="mdi mdi-lock-check"></i> netbox-secrets
-                </span>
-                <span class="text-muted small ms-1">{% trans "Secret found (bmc-credentials role)" %}</span>
+                <i class="mdi mdi-lock-check text-success"></i>
+                netbox-secrets — {% trans "Secret found (bmc-credentials role)" %}
               {% else %}
-                <span class="badge bg-warning text-dark">
-                  <i class="mdi mdi-lock-alert"></i> netbox-secrets
-                </span>
-                <span class="text-muted small ms-1">{% trans "No secret found for this device" %}</span>
+                <i class="mdi mdi-lock-alert text-warning"></i>
+                netbox-secrets — {% trans "No secret found for this device" %}
                 <div class="text-muted small mt-1">
                   {% trans "Add a Secret with role" %} <code>bmc-credentials</code>
                   {% trans "assigned to" %} <strong>{{ object.device }}</strong>.<br>
@@ -47,10 +43,9 @@
                 </div>
               {% endif %}
             {% else %}
-              <span class="badge bg-secondary">{% trans "Plaintext" %}</span>
-              <span class="text-muted small ms-1">
-                netbox-secrets {% trans "not installed" %} — {% trans "credentials stored in plaintext fields below." %}
-              </span>
+              <i class="mdi mdi-file-document-outline text-muted"></i>
+              {% trans "Plaintext" %} — netbox-secrets {% trans "not installed" %},
+              {% trans "credentials stored in plaintext fields below." %}
             {% endif %}
           </td>
         </tr>
