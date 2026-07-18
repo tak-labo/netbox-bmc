@@ -86,8 +86,8 @@ class ManagerInfo:
 class SensorReading:
     """温度・電圧・消費電力・Fan回転数などのセンサー実測値。
 
-    get_sensors() の戻り値。Power Status と同様にページ表示のたびに
-    ライブ取得する (DB には保存しない)。
+    get_sensors() の戻り値。SensorsSyncJob / ScheduledSensorsSyncJob が
+    BMCEndpoint.sensors に dataclasses.asdict() でシリアライズして保存する。
     """
     name: str
     kind: str               # temperature | fan | voltage | power
@@ -100,8 +100,8 @@ class SensorReading:
 class SelEntry:
     """System Event Log (SEL) の1エントリ。
 
-    get_event_log() の戻り値。Power Status と同様にページ表示のたびに
-    ライブ取得する (DB には保存しない)。
+    get_event_log() の戻り値。EventLogSyncJob / ScheduledEventLogSyncJob が
+    BMCEndpoint.event_log に dataclasses.asdict() でシリアライズして保存する。
     """
     created: str = ""
     severity: str = ""

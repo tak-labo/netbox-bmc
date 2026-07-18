@@ -317,51 +317,42 @@ class ManagerInfoView(View):
         return JsonResponse(asdict(info))
 
 
-class SensorsView(View):
-    """GET: センサーテレメトリ (温度/Fan/電圧/消費電力) を JSON で返す (ライブ取得、DB保存なし)。"""
+class SensorsSyncActionView(View):
+    """POST: センサーテレメトリ同期ジョブ (SensorsSyncJob) をキューに入れる。
 
-    def get(self, request, pk):
+    Sensors カードは DB (sensors / sensors_last_sync) を表示するだけで
+    ライブ取得はしない。実際の取得は非同期ジョブで行い、完了後に DB へ反映される。
+    """
+
+    def post(self, request, pk):
         endpoint = get_object_or_404(BMCEndpoint, pk=pk)
-        if not request.user.has_perm("netbox_bmc.view_bmcendpoint"):
-            return JsonResponse({"error": _("Permission denied.")}, status=403)
+        if not request.user.has_perm("netbox_bmc.change_bmcendpoint"):
+            messages.error(request, _("Permission denied."))
+            return redirect(endpoint.get_absolute_url())
 
-        try:
-            with endpoint.get_driver(request=request) as driver:
-                readings = driver.get_sensors()
-        except NotImplementedError:
-            return JsonResponse(
-                {"error": _("Not supported for this protocol")}, status=501,
-            )
-        except Exception as e:
-            return JsonResponse({"error": str(e)}, status=500)
-
-        return JsonResponse([asdict(r) for r in readings], safe=False)
+        from .jobs import SensorsSyncJob
+        SensorsSyncJob.enqueue(instance=endpoint, user=request.user)
+        messages.success(request, _("Sensors sync queued."))
+        return redirect(endpoint.get_absolute_url())
 
 
-class EventLogView(View):
-    """GET: System Event Log (SEL) の直近エントリを JSON で返す (ライブ取得、DB保存なし)。"""
+class EventLogSyncActionView(View):
+    """POST: System Event Log 同期ジョブ (EventLogSyncJob) をキューに入れる。
 
-    def get(self, request, pk):
+    Event Log カードは DB (event_log / event_log_last_sync) を表示するだけで
+    ライブ取得はしない。実際の取得は非同期ジョブで行い、完了後に DB へ反映される。
+    """
+
+    def post(self, request, pk):
         endpoint = get_object_or_404(BMCEndpoint, pk=pk)
-        if not request.user.has_perm("netbox_bmc.view_bmcendpoint"):
-            return JsonResponse({"error": _("Permission denied.")}, status=403)
+        if not request.user.has_perm("netbox_bmc.change_bmcendpoint"):
+            messages.error(request, _("Permission denied."))
+            return redirect(endpoint.get_absolute_url())
 
-        try:
-            limit = min(int(request.GET.get("limit", 20)), 100)
-        except (ValueError, TypeError):
-            limit = 20
-
-        try:
-            with endpoint.get_driver(request=request) as driver:
-                entries = driver.get_event_log(limit=limit)
-        except NotImplementedError:
-            return JsonResponse(
-                {"error": _("Not supported for this protocol")}, status=501,
-            )
-        except Exception as e:
-            return JsonResponse({"error": str(e)}, status=500)
-
-        return JsonResponse([asdict(e) for e in entries], safe=False)
+        from .jobs import EventLogSyncJob
+        EventLogSyncJob.enqueue(instance=endpoint, user=request.user)
+        messages.success(request, _("Event log sync queued."))
+        return redirect(endpoint.get_absolute_url())
 
 
 class FetchRawView(View):

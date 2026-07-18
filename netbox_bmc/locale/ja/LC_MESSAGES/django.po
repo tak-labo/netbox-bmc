@@ -340,6 +340,18 @@ msgstr "ネットワーク同期"
 msgid "Network sync queued."
 msgstr "ネットワーク同期をキューに追加しました。"
 
+msgid "Sync Sensors"
+msgstr "センサー同期"
+
+msgid "Sensors sync queued."
+msgstr "センサー同期をキューに追加しました。"
+
+msgid "Sync Event Log"
+msgstr "イベントログ同期"
+
+msgid "Event log sync queued."
+msgstr "イベントログ同期をキューに追加しました。"
+
 msgid "Yes"
 msgstr "はい"
 

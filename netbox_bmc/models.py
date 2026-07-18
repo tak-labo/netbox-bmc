@@ -55,6 +55,16 @@ class BMCEndpoint(JobsMixin, NetBoxModel):
     network_interfaces = models.JSONField(default=list, blank=True)
     network_last_sync = models.DateTimeField(blank=True, null=True)
 
+    # センサーテレメトリ (SensorsSyncJob / ScheduledSensorsSyncJob が更新)
+    # inventory.SensorReading のリストを dataclasses.asdict() でシリアライズして保存
+    sensors = models.JSONField(default=list, blank=True)
+    sensors_last_sync = models.DateTimeField(blank=True, null=True)
+
+    # System Event Log (EventLogSyncJob / ScheduledEventLogSyncJob が更新)
+    # inventory.SelEntry のリストを dataclasses.asdict() でシリアライズして保存
+    event_log = models.JSONField(default=list, blank=True)
+    event_log_last_sync = models.DateTimeField(blank=True, null=True)
+
     class Meta:
         ordering = ("device",)
         verbose_name = "BMC endpoint"

@@ -27,7 +27,8 @@ urlpatterns = [
     path("endpoints/<int:pk>/power-status/", views.PowerStatusView.as_view(), name="bmcendpoint_power_status"),
     path("endpoints/<int:pk>/network-sync/", views.NetworkSyncActionView.as_view(), name="bmcendpoint_network_sync"),
     path("endpoints/<int:pk>/manager-info/", views.ManagerInfoView.as_view(), name="bmcendpoint_manager_info"),
-    path("endpoints/<int:pk>/sensors/", views.SensorsView.as_view(), name="bmcendpoint_sensors"),
-    path("endpoints/<int:pk>/event-log/", views.EventLogView.as_view(), name="bmcendpoint_event_log"),
+    path("endpoints/<int:pk>/sensors-sync/", views.SensorsSyncActionView.as_view(), name="bmcendpoint_sensors_sync"),
+    path("endpoints/<int:pk>/event-log-sync/", views.EventLogSyncActionView.as_view(),
+         name="bmcendpoint_event_log_sync"),
     path("endpoints/<int:pk>/raw/", views.FetchRawView.as_view(), name="bmcendpoint_raw"),
 ]

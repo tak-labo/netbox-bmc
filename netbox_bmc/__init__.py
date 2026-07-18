@@ -25,6 +25,10 @@ class NetBoxBMCConfig(PluginConfig):
         "sync_interval_minutes": 0,
         # BMC ネットワーク設定の定期一括同期の間隔 (分)。0 で無効。
         "network_sync_interval_minutes": 0,
+        # センサーテレメトリの定期一括同期の間隔 (分)。0 で無効。
+        "sensors_sync_interval_minutes": 0,
+        # System Event Log の定期一括同期の間隔 (分)。0 で無効。
+        "event_log_sync_interval_minutes": 0,
         "default_verify_ssl": False,
         # netbox-secrets バックグラウンドジョブ用サービスアカウント設定
         # (netbox-secrets 使用時のみ必要)
@@ -45,6 +49,14 @@ class NetBoxBMCConfig(PluginConfig):
         network_interval = settings.get("network_sync_interval_minutes") or 0
         if network_interval:
             self._enqueue_scheduled_job(jobs.ScheduledNetworkSyncJob, network_interval)
+
+        sensors_interval = settings.get("sensors_sync_interval_minutes") or 0
+        if sensors_interval:
+            self._enqueue_scheduled_job(jobs.ScheduledSensorsSyncJob, sensors_interval)
+
+        event_log_interval = settings.get("event_log_sync_interval_minutes") or 0
+        if event_log_interval:
+            self._enqueue_scheduled_job(jobs.ScheduledEventLogSyncJob, event_log_interval)
 
     @staticmethod
     def _enqueue_scheduled_job(job_class, interval_minutes: int) -> None:
