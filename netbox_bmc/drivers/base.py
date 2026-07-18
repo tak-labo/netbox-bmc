@@ -51,6 +51,14 @@ class BaseDriver:
         """シャーシの Identify LED を点灯/消灯する。"""
         raise NotImplementedError
 
+    def get_sensors(self):
+        """温度・電圧・消費電力・Fan回転数のセンサー実測値一覧を返す。
+
+        戻り値: list[inventory.SensorReading]
+        プロトコルが未対応の場合は NotImplementedError を送出する。
+        """
+        raise NotImplementedError
+
     def close(self) -> None:
         pass
 

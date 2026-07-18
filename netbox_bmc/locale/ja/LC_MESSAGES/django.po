@@ -247,6 +247,18 @@ msgstr "BMCファームウェア"
 msgid "BMC Health"
 msgstr "BMCヘルス"
 
+msgid "Sensors"
+msgstr "センサー"
+
+msgid "Name"
+msgstr "名前"
+
+msgid "Reading"
+msgstr "測定値"
+
+msgid "No sensors detected."
+msgstr "センサーが検出されませんでした。"
+
 msgid "Not supported for this protocol"
 msgstr "このプロトコルではサポートされていません"
 

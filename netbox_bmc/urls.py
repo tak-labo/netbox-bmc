@@ -26,5 +26,6 @@ urlpatterns = [
     path("endpoints/<int:pk>/identify/", views.IdentifyActionView.as_view(), name="bmcendpoint_identify"),
     path("endpoints/<int:pk>/power-status/", views.PowerStatusView.as_view(), name="bmcendpoint_power_status"),
     path("endpoints/<int:pk>/manager-info/", views.ManagerInfoView.as_view(), name="bmcendpoint_manager_info"),
+    path("endpoints/<int:pk>/sensors/", views.SensorsView.as_view(), name="bmcendpoint_sensors"),
     path("endpoints/<int:pk>/raw/", views.FetchRawView.as_view(), name="bmcendpoint_raw"),
 ]

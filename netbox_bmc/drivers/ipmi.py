@@ -10,7 +10,13 @@ from __future__ import annotations
 import logging
 import re as _re
 
-from ..inventory import Component, InventoryResult, ManagerInfo, SystemInfo
+from ..inventory import (
+    Component,
+    InventoryResult,
+    ManagerInfo,
+    SensorReading,
+    SystemInfo,
+)
 from .base import BaseDriver, BMCError
 
 logger = logging.getLogger("netbox_bmc.ipmi")
@@ -24,6 +30,27 @@ _CHASSIS_CTRL = {
     "reset": 0x03,  # Hard Reset
     "soft":  0x05,  # Soft-off via ACPI
 }
+
+# SDR センサー type -> SensorReading.kind
+_SENSOR_KIND_MAP = {
+    "Temperature": "temperature",
+    "Fan": "fan",
+    "Voltage": "voltage",
+    "Power Supply": "power",
+    "Power Unit": "power",
+    "Current": "power",
+}
+
+
+def _health_str(health_bits: int) -> str:
+    """pyghmi の const.Health ビットマスクを人間向け文字列に変換する。"""
+    if health_bits & 4:
+        return "Failed"
+    if health_bits & 2:
+        return "Critical"
+    if health_bits & 1:
+        return "Warning"
+    return "OK"
 
 
 def _make_safe_command_class(command_module):
@@ -186,6 +213,30 @@ class IPMIDriver(BaseDriver):
             self.cmd.set_identify(on=on)
         except Exception as e:
             raise BMCError(f"IPMI identify action failed: {e}") from e
+
+    def get_sensors(self) -> list[SensorReading]:
+        """get_sensor_data() (既に _components_from_sensors で呼んでいる) の
+        各読み取りから数値 (温度/Fan回転数/電圧/消費電力) を保持して返す。
+        """
+        try:
+            sensors = list(self.cmd.get_sensor_data())
+        except Exception as e:
+            raise BMCError(f"IPMI get_sensor_data failed: {e}") from e
+
+        readings: list[SensorReading] = []
+        for s in sensors:
+            stype = getattr(s, "type", "") or ""
+            kind = _SENSOR_KIND_MAP.get(stype)
+            if kind is None:
+                continue
+            readings.append(SensorReading(
+                name=getattr(s, "name", "") or "",
+                kind=kind,
+                value=getattr(s, "value", None),
+                units=getattr(s, "units", "") or "",
+                status=_health_str(getattr(s, "health", 0)),
+            ))
+        return readings
 
     def close(self):
         try:
