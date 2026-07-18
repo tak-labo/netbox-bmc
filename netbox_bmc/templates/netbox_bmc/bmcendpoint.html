@@ -30,44 +30,6 @@
     </button>
   </form>
 
-  {% with power_url="plugins:netbox_bmc:bmcendpoint_power" %}
-  <div class="btn-group ms-1" role="group">
-    <form method="post" action="{% url power_url pk=object.pk %}" class="d-inline">
-      {% csrf_token %}<input type="hidden" name="action" value="on">
-      <button type="submit" class="btn btn-success btn-sm text-white" title="{% trans 'Power On' %}">
-        <i class="mdi mdi-power"></i> {% trans "On" %}
-      </button>
-    </form>
-    <form method="post" action="{% url power_url pk=object.pk %}" class="d-inline">
-      {% csrf_token %}<input type="hidden" name="action" value="off">
-      <button type="submit" class="btn btn-danger btn-sm" title="{% trans 'Power Off (Hard)' %}"
-              onclick="return confirm('{% trans 'Hard power off?' %}')">
-        <i class="mdi mdi-power-off"></i> {% trans "Off" %}
-      </button>
-    </form>
-    <form method="post" action="{% url power_url pk=object.pk %}" class="d-inline">
-      {% csrf_token %}<input type="hidden" name="action" value="soft">
-      <button type="submit" class="btn btn-outline-warning btn-sm" title="{% trans 'Soft Off (ACPI)' %}">
-        <i class="mdi mdi-power-sleep"></i> {% trans "Soft" %}
-      </button>
-    </form>
-    <form method="post" action="{% url power_url pk=object.pk %}" class="d-inline">
-      {% csrf_token %}<input type="hidden" name="action" value="cycle">
-      <button type="submit" class="btn btn-outline-secondary btn-sm" title="{% trans 'Power Cycle' %}"
-              onclick="return confirm('{% trans 'Power cycle?' %}')">
-        <i class="mdi mdi-restart"></i> {% trans "Cycle" %}
-      </button>
-    </form>
-    <form method="post" action="{% url power_url pk=object.pk %}" class="d-inline">
-      {% csrf_token %}<input type="hidden" name="action" value="reset">
-      <button type="submit" class="btn btn-outline-secondary btn-sm" title="{% trans 'Reset' %}"
-              onclick="return confirm('{% trans 'Reset?' %}')">
-        <i class="mdi mdi-reload"></i> {% trans "Reset" %}
-      </button>
-    </form>
-  </div>
-  {% endwith %}
-
   <a href="{% url 'plugins:netbox_bmc:bmcendpoint_raw' pk=object.pk %}?depth=3"
      target="_blank" class="btn btn-outline-secondary ms-1">
     <i class="mdi mdi-code-json"></i> {% trans "Raw Data" %}
@@ -137,6 +99,49 @@
   </div>
 
   <div class="col col-md-6">
+    <div class="card mb-3">
+      <h5 class="card-header">{% trans "Power Control" %}</h5>
+      <div class="card-body">
+        {% with power_url="plugins:netbox_bmc:bmcendpoint_power" %}
+        <div class="btn-group" role="group">
+          <form method="post" action="{% url power_url pk=object.pk %}" class="d-inline">
+            {% csrf_token %}<input type="hidden" name="action" value="on">
+            <button type="submit" class="btn btn-success btn-sm text-white" title="{% trans 'Power On' %}">
+              <i class="mdi mdi-power"></i> {% trans "On" %}
+            </button>
+          </form>
+          <form method="post" action="{% url power_url pk=object.pk %}" class="d-inline">
+            {% csrf_token %}<input type="hidden" name="action" value="off">
+            <button type="submit" class="btn btn-danger btn-sm" title="{% trans 'Power Off (Hard)' %}"
+                    onclick="return confirm('{% trans 'Hard power off?' %}')">
+              <i class="mdi mdi-power-off"></i> {% trans "Off" %}
+            </button>
+          </form>
+          <form method="post" action="{% url power_url pk=object.pk %}" class="d-inline">
+            {% csrf_token %}<input type="hidden" name="action" value="soft">
+            <button type="submit" class="btn btn-outline-warning btn-sm" title="{% trans 'Soft Off (ACPI)' %}">
+              <i class="mdi mdi-power-sleep"></i> {% trans "Soft" %}
+            </button>
+          </form>
+          <form method="post" action="{% url power_url pk=object.pk %}" class="d-inline">
+            {% csrf_token %}<input type="hidden" name="action" value="cycle">
+            <button type="submit" class="btn btn-outline-secondary btn-sm" title="{% trans 'Power Cycle' %}"
+                    onclick="return confirm('{% trans 'Power cycle?' %}')">
+              <i class="mdi mdi-restart"></i> {% trans "Cycle" %}
+            </button>
+          </form>
+          <form method="post" action="{% url power_url pk=object.pk %}" class="d-inline">
+            {% csrf_token %}<input type="hidden" name="action" value="reset">
+            <button type="submit" class="btn btn-outline-secondary btn-sm" title="{% trans 'Reset' %}"
+                    onclick="return confirm('{% trans 'Reset?' %}')">
+              <i class="mdi mdi-reload"></i> {% trans "Reset" %}
+            </button>
+          </form>
+        </div>
+        {% endwith %}
+      </div>
+    </div>
+
     <div class="card">
       <h5 class="card-header">{% trans "Sync Status" %}</h5>
       <table class="table table-hover attr-table">

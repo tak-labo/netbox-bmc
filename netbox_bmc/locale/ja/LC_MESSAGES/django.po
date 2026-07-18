@@ -226,6 +226,9 @@ msgstr "パスワード(フォールバック)"
 msgid "stored (plaintext)"
 msgstr "保存済み(平文)"
 
+msgid "Power Control"
+msgstr "電源操作"
+
 msgid "Sync Status"
 msgstr "同期ステータス"
 
