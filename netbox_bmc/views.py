@@ -1,6 +1,4 @@
 
-from dataclasses import asdict
-
 from dcim.models import Device
 from django.contrib import messages
 from django.http import JsonResponse
@@ -69,6 +67,11 @@ class BuildModulesView(View):
         try:
             with endpoint.get_driver(request=request) as driver:
                 result = driver.get_inventory()
+                try:
+                    firmware_version = driver.get_manager_info().firmware_version
+                except Exception:
+                    # ファームウェアバージョンが取得できなくても Inventory スキャン自体は継続する
+                    firmware_version = ""
         except Exception as e:
             endpoint.last_sync = timezone.now()
             endpoint.last_sync_status = f"Error: {e}"[:255]
@@ -83,11 +86,13 @@ class BuildModulesView(View):
         endpoint.detected_vendor = result.vendor
         endpoint.detected_protocol = result.protocol
         endpoint.detected_serial = (serial or "")[:255]
+        if firmware_version:
+            endpoint.detected_firmware_version = firmware_version[:64]
         endpoint.last_sync = timezone.now()
         endpoint.last_sync_status = "OK"
         endpoint.save(update_fields=[
             "detected_vendor", "detected_protocol", "detected_serial",
-            "last_sync", "last_sync_status",
+            "detected_firmware_version", "last_sync", "last_sync_status",
         ])
 
         asset_tag = result.system.asset_tag
@@ -277,93 +282,80 @@ class PowerStatusView(View):
         return JsonResponse({"state": state})
 
 
-class NetworkConfigView(View):
-    """GET: BMC 自身のネットワーク設定を JSON で返す (ライブ取得、DB保存なし)。"""
+class NetworkSyncActionView(View):
+    """POST: BMC ネットワーク設定同期ジョブ (NetworkSyncJob) をキューに入れる。
 
-    def get(self, request, pk):
+    Network カードは DB (network_interfaces / network_last_sync) を表示するだけで
+    ライブ取得はしない。実際の取得は非同期ジョブで行い、完了後に DB へ反映される。
+    """
+
+    def post(self, request, pk):
         endpoint = get_object_or_404(BMCEndpoint, pk=pk)
-        if not request.user.has_perm("netbox_bmc.view_bmcendpoint"):
-            return JsonResponse({"error": _("Permission denied.")}, status=403)
+        if not request.user.has_perm("netbox_bmc.change_bmcendpoint"):
+            messages.error(request, _("Permission denied."))
+            return redirect(endpoint.get_absolute_url())
 
-        try:
-            with endpoint.get_driver(request=request) as driver:
-                ifaces = driver.get_network_config()
-        except NotImplementedError:
-            return JsonResponse(
-                {"error": _("Not supported for this protocol")}, status=501,
-            )
-        except Exception as e:
-            return JsonResponse({"error": str(e)}, status=500)
-
-        return JsonResponse([asdict(i) for i in ifaces], safe=False)
+        from .jobs import NetworkSyncJob
+        NetworkSyncJob.enqueue(instance=endpoint, user=request.user)
+        messages.success(request, _("Network sync queued."))
+        return redirect(endpoint.get_absolute_url())
 
 
-class ManagerInfoView(View):
-    """GET: BMC 自身のファームウェア/ヘルスを JSON で返す (ライブ取得、DB保存なし)。"""
+class ManagerHealthSyncActionView(View):
+    """POST: BMC ヘルス同期ジョブ (ManagerHealthSyncJob) をキューに入れる。
 
-    def get(self, request, pk):
+    Sync Status カード内の BMC Health は DB (manager_health / manager_health_last_sync)
+    を表示するだけでライブ取得はしない。BMC Firmware は Inventory スキャンで更新される。
+    """
+
+    def post(self, request, pk):
         endpoint = get_object_or_404(BMCEndpoint, pk=pk)
-        if not request.user.has_perm("netbox_bmc.view_bmcendpoint"):
-            return JsonResponse({"error": _("Permission denied.")}, status=403)
+        if not request.user.has_perm("netbox_bmc.change_bmcendpoint"):
+            messages.error(request, _("Permission denied."))
+            return redirect(endpoint.get_absolute_url())
 
-        try:
-            with endpoint.get_driver(request=request) as driver:
-                info = driver.get_manager_info()
-        except NotImplementedError:
-            return JsonResponse(
-                {"error": _("Not supported for this protocol")}, status=501,
-            )
-        except Exception as e:
-            return JsonResponse({"error": str(e)}, status=500)
-
-        return JsonResponse(asdict(info))
+        from .jobs import ManagerHealthSyncJob
+        ManagerHealthSyncJob.enqueue(instance=endpoint, user=request.user)
+        messages.success(request, _("Manager health sync queued."))
+        return redirect(endpoint.get_absolute_url())
 
 
-class SensorsView(View):
-    """GET: センサーテレメトリ (温度/Fan/電圧/消費電力) を JSON で返す (ライブ取得、DB保存なし)。"""
+class SensorsSyncActionView(View):
+    """POST: センサーテレメトリ同期ジョブ (SensorsSyncJob) をキューに入れる。
 
-    def get(self, request, pk):
+    Sensors カードは DB (sensors / sensors_last_sync) を表示するだけで
+    ライブ取得はしない。実際の取得は非同期ジョブで行い、完了後に DB へ反映される。
+    """
+
+    def post(self, request, pk):
         endpoint = get_object_or_404(BMCEndpoint, pk=pk)
-        if not request.user.has_perm("netbox_bmc.view_bmcendpoint"):
-            return JsonResponse({"error": _("Permission denied.")}, status=403)
+        if not request.user.has_perm("netbox_bmc.change_bmcendpoint"):
+            messages.error(request, _("Permission denied."))
+            return redirect(endpoint.get_absolute_url())
 
-        try:
-            with endpoint.get_driver(request=request) as driver:
-                readings = driver.get_sensors()
-        except NotImplementedError:
-            return JsonResponse(
-                {"error": _("Not supported for this protocol")}, status=501,
-            )
-        except Exception as e:
-            return JsonResponse({"error": str(e)}, status=500)
-
-        return JsonResponse([asdict(r) for r in readings], safe=False)
+        from .jobs import SensorsSyncJob
+        SensorsSyncJob.enqueue(instance=endpoint, user=request.user)
+        messages.success(request, _("Sensors sync queued."))
+        return redirect(endpoint.get_absolute_url())
 
 
-class EventLogView(View):
-    """GET: System Event Log (SEL) の直近エントリを JSON で返す (ライブ取得、DB保存なし)。"""
+class EventLogSyncActionView(View):
+    """POST: System Event Log 同期ジョブ (EventLogSyncJob) をキューに入れる。
 
-    def get(self, request, pk):
+    Event Log カードは DB (event_log / event_log_last_sync) を表示するだけで
+    ライブ取得はしない。実際の取得は非同期ジョブで行い、完了後に DB へ反映される。
+    """
+
+    def post(self, request, pk):
         endpoint = get_object_or_404(BMCEndpoint, pk=pk)
-        if not request.user.has_perm("netbox_bmc.view_bmcendpoint"):
-            return JsonResponse({"error": _("Permission denied.")}, status=403)
+        if not request.user.has_perm("netbox_bmc.change_bmcendpoint"):
+            messages.error(request, _("Permission denied."))
+            return redirect(endpoint.get_absolute_url())
 
-        try:
-            limit = min(int(request.GET.get("limit", 20)), 100)
-        except (ValueError, TypeError):
-            limit = 20
-
-        try:
-            with endpoint.get_driver(request=request) as driver:
-                entries = driver.get_event_log(limit=limit)
-        except NotImplementedError:
-            return JsonResponse(
-                {"error": _("Not supported for this protocol")}, status=501,
-            )
-        except Exception as e:
-            return JsonResponse({"error": str(e)}, status=500)
-
-        return JsonResponse([asdict(e) for e in entries], safe=False)
+        from .jobs import EventLogSyncJob
+        EventLogSyncJob.enqueue(instance=endpoint, user=request.user)
+        messages.success(request, _("Event log sync queued."))
+        return redirect(endpoint.get_absolute_url())
 
 
 class FetchRawView(View):
