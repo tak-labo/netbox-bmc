@@ -26,7 +26,7 @@ msgid "Fallback when netbox-secrets is not available"
 msgstr "netbox-secrets が利用できない場合のフォールバック"
 
 msgid "Fallback when netbox-secrets is not available (plaintext)"
-msgstr "netbox-secrets が利用できない場合のフォールバック(平文)"
+msgstr "netbox-secrets が利用できない場合のフォールバック(プレーンテキスト)"
 
 msgid "Device Role (filter)"
 msgstr "Device Role(絞り込み)"
@@ -197,7 +197,7 @@ msgid "Source"
 msgstr "取得元"
 
 msgid "Plaintext"
-msgstr "平文"
+msgstr "プレーンテキスト"
 
 msgid "not installed"
 msgstr "未インストール"
@@ -224,10 +224,10 @@ msgid "BMC password"
 msgstr "BMC パスワード"
 
 msgid "Falling back to plaintext fields."
-msgstr "平文フィールドにフォールバックしています。"
+msgstr "プレーンテキストフィールドにフォールバックしています。"
 
 msgid "credentials stored in plaintext fields below."
-msgstr "認証情報は下記の平文フィールドに保存されています。"
+msgstr "認証情報は下記のプレーンテキストフィールドに保存されています。"
 
 msgid "Username (fallback)"
 msgstr "ユーザー名(フォールバック)"
@@ -236,7 +236,7 @@ msgid "Password (fallback)"
 msgstr "パスワード(フォールバック)"
 
 msgid "stored (plaintext)"
-msgstr "保存済み(平文)"
+msgstr "保存済み(プレーンテキスト)"
 
 msgid "Power Control"
 msgstr "電源操作"
