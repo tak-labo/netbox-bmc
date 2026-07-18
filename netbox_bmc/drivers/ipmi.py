@@ -77,6 +77,32 @@ def _make_safe_command_class(command_module):
     return _SafeCommand
 
 
+def _purge_stale_pyghmi_session(bmc: str, userid: str, password: str, port: int) -> None:
+    """pyghmi の process-wide セッションキャッシュから該当エントリを強制的に破棄する。
+
+    pyghmi.ipmi.private.session.Session は (bmc, userid, password, port, kg) をキーに
+    Session インスタンスをプロセス全体で使い回す設計になっている
+    (Session.__new__ の bmc_handlers / initting_sessions)。このプラグインは HTTP
+    リクエストごとに新しい IPMIDriver を都度生成・破棄する設計のため、この使い回しは
+    都合が悪い: __init__ の早期 return パス (`hasattr(self, "initialized")`) では
+    logoutexpiry がリセットされないまま __new__ 側で強制的に logging=True が
+    セットされることがあり、その状態で raw_command() のポーリングループ
+    (`_monotonic_time() < self.logoutexpiry`) が None と比較されて
+    `TypeError: '<' not supported between instances of 'float' and 'NoneType'` になる
+    (pyghmi 側のバグ)。呼び出しごとに毎回キャッシュを破棄し、必ず新規 Session を
+    作らせることで回避する。
+    """
+    try:
+        from pyghmi.ipmi.private import session as pysession
+    except ImportError:
+        return
+    pysession.Session.initting_sessions.pop((bmc, userid, password, port, None), None)
+    for sockaddr, ports in list(pysession.Session.bmc_handlers.items()):
+        for sess_port, sess in list(ports.items()):
+            if sess.bmc == bmc:
+                del pysession.Session.bmc_handlers[sockaddr][sess_port]
+
+
 class IPMIDriver(BaseDriver):
     protocol = "ipmi"
 
@@ -86,13 +112,15 @@ class IPMIDriver(BaseDriver):
             from pyghmi.ipmi import command
         except ImportError as e:
             raise BMCError("pyghmi is not installed") from e
+        port = self.port or 623
+        _purge_stale_pyghmi_session(self.address, self.username, self.password, port)
         try:
             SafeCommand = _make_safe_command_class(command)
             self.cmd = SafeCommand(
                 bmc=self.address,
                 userid=self.username,
                 password=self.password,
-                port=self.port or 623,
+                port=port,
             )
         except Exception as e:
             raise BMCError(f"IPMI connection to {self.address} failed: {e}") from e
