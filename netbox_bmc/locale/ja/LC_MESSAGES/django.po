@@ -226,11 +226,11 @@ msgstr "BMC パスワード"
 msgid "Falling back to plaintext fields."
 msgstr "プレーンテキストフィールドにフォールバックしています。"
 
-msgid "Username (fallback)"
-msgstr "ユーザー名(フォールバック)"
+msgid "Username"
+msgstr "ユーザー名"
 
-msgid "Password (fallback)"
-msgstr "パスワード(フォールバック)"
+msgid "Password"
+msgstr "パスワード"
 
 msgid "stored (plaintext)"
 msgstr "保存済み(プレーンテキスト)"

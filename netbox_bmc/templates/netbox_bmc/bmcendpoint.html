@@ -49,9 +49,9 @@
           </td>
         </tr>
         {% if object.username and not secret_found %}
-          <tr><th scope="row">{% trans "Username (fallback)" %}</th>
+          <tr><th scope="row">{% trans "Username" %}</th>
               <td><code>{{ object.username }}</code></td></tr>
-          <tr><th scope="row">{% trans "Password (fallback)" %}</th>
+          <tr><th scope="row">{% trans "Password" %}</th>
               <td><em class="text-muted">{% trans "stored (plaintext)" %}</em></td></tr>
         {% endif %}
       </table>
