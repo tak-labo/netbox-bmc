@@ -133,17 +133,8 @@ msgstr "Web GUI (IP)"
 msgid "Web GUI (DNS)"
 msgstr "Web GUI (DNS)"
 
-msgid "Console (IP)"
-msgstr "コンソール (IP)"
-
-msgid "Console (DNS)"
-msgstr "コンソール (DNS)"
-
 msgid "Web GUI"
 msgstr "Web GUI"
-
-msgid "Open Console"
-msgstr "コンソールを開く"
 
 msgid "Build Modules"
 msgstr "モジュールを構築"
