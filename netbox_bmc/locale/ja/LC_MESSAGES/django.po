@@ -358,6 +358,12 @@ msgstr "Manager Info 同期をキューに追加しました。"
 msgid "Manager Info Last Sync"
 msgstr "Manager Info 最終同期"
 
+msgid "Inventory Last Sync"
+msgstr "インベントリ最終同期"
+
+msgid "Inventory Scan Status"
+msgstr "インベントリスキャン状態"
+
 msgid "Yes"
 msgstr "はい"
 
