@@ -169,6 +169,27 @@ class RedfishDriver(BaseDriver):
         except requests.RequestException as e:
             raise BMCError(f"Redfish GET {path} failed: {e}") from e
 
+    def _get_etag(self, path: str) -> str | None:
+        """PATCH の If-Match 用に ETag を取得する。
+
+        多くの実装 (iDRAC 等) は PATCH に If-Match ヘッダを必須とし、
+        無いと 428 Precondition Required を返す。HTTP の ETag ヘッダを
+        優先し、無ければ本文の @odata.etag にフォールバックする。
+        """
+        try:
+            with self._suppress_ssl_warnings():
+                r = self.session.get(self._url(path), timeout=self.timeout)
+            r.raise_for_status()
+        except requests.RequestException:
+            return None
+        etag = r.headers.get("ETag")
+        if etag:
+            return etag
+        try:
+            return r.json().get("@odata.etag")
+        except ValueError:
+            return None
+
     def _get_optional(self, path: str) -> dict | None:
         """403/404 など取得不可のリソースは None を返し、呼び出し元でスキップさせる。"""
         try:
@@ -579,6 +600,8 @@ class RedfishDriver(BaseDriver):
 
         旧スキーマの実装 (IndicatorLED 文字列 enum) しか持たない BMC 向けに
         PATCH が拒否された場合はそちらへフォールバックする。
+        一部の実装 (iDRAC 等) は PATCH に If-Match ヘッダを必須とし、
+        無いと 428 Precondition Required を返すため、事前に ETag を取得して送る。
         """
         root = self._get("/redfish/v1")
         systems = self._collection(root, "Systems")
@@ -589,19 +612,28 @@ class RedfishDriver(BaseDriver):
         if not chassis_ref:
             raise BMCError("No Chassis resource found")
 
+        etag = self._get_etag(chassis_ref)
+        headers = {"If-Match": etag} if etag else {}
+
         with self._suppress_ssl_warnings():
             r = self.session.patch(
                 self._url(chassis_ref),
                 json={"LocationIndicatorActive": on},
+                headers=headers,
                 timeout=self.timeout,
             )
         if r.status_code in (200, 202, 204):
             return
 
+        # フォールバック前に ETag を取り直す (直前の失敗レスポンスで変わっている可能性がある)
+        etag = self._get_etag(chassis_ref)
+        headers = {"If-Match": etag} if etag else {}
+
         with self._suppress_ssl_warnings():
             r2 = self.session.patch(
                 self._url(chassis_ref),
                 json={"IndicatorLED": "Lit" if on else "Off"},
+                headers=headers,
                 timeout=self.timeout,
             )
         if r2.status_code not in (200, 202, 204):

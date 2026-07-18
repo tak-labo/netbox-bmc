@@ -14,11 +14,6 @@
         <tr><th scope="row">{% trans "Status" %}</th>
             <td>{{ bmc_endpoint.last_sync_status|placeholder }}</td></tr>
       </table>
-      <div class="mt-2">
-        <a href="{{ bmc_endpoint.get_absolute_url }}" class="btn btn-sm btn-outline-primary">
-          <i class="mdi mdi-chip"></i> {% trans "View BMC Endpoint" %}
-        </a>
-      </div>
     {% else %}
       <p class="text-muted mb-2">{% trans "No BMC endpoint configured." %}</p>
       <a href="{% url 'plugins:netbox_bmc:bmcendpoint_add' %}?device={{ object.pk }}"
