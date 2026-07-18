@@ -16,7 +16,14 @@ import logging
 import requests
 import urllib3
 
-from ..inventory import Component, InventoryResult, SelEntry, SystemInfo
+from ..inventory import (
+    Component,
+    InventoryResult,
+    ManagerInfo,
+    SelEntry,
+    SensorReading,
+    SystemInfo,
+)
 from .base import BaseDriver, BMCError
 
 logger = logging.getLogger("netbox_bmc.redfish")
@@ -485,6 +492,124 @@ class RedfishDriver(BaseDriver):
             )
         if r.status_code not in (200, 202, 204):
             raise BMCError(f"Power action failed: HTTP {r.status_code} {r.text[:200]}")
+
+    # --- BMC自身の情報 -------------------------------------------------------
+    def get_manager_info(self) -> ManagerInfo:
+        """Managers/{id} リソース自体から BMC のファームウェア/ヘルスを取得。"""
+        root = self._get("/redfish/v1")
+        managers = self._collection(root, "Managers")
+        if not managers:
+            raise BMCError("No Manager resource found")
+        mgr = managers[0]
+        return ManagerInfo(
+            firmware_version=mgr.get("FirmwareVersion") or "",
+            health=(mgr.get("Status") or {}).get("Health") or "",
+            model=mgr.get("Model") or "",
+            name=mgr.get("Name") or "",
+        )
+
+    def set_identify(self, on: bool) -> None:
+        """Chassis.LocationIndicatorActive を PATCH して Identify LED を切り替える。
+
+        旧スキーマの実装 (IndicatorLED 文字列 enum) しか持たない BMC 向けに
+        PATCH が拒否された場合はそちらへフォールバックする。
+        """
+        root = self._get("/redfish/v1")
+        systems = self._collection(root, "Systems")
+        if not systems:
+            raise BMCError("No ComputerSystem found")
+        chassis_refs = systems[0].get("Links", {}).get("Chassis", [])[:1]
+        chassis_ref = chassis_refs[0].get("@odata.id") if chassis_refs else None
+        if not chassis_ref:
+            raise BMCError("No Chassis resource found")
+
+        with self._suppress_ssl_warnings():
+            r = self.session.patch(
+                self._url(chassis_ref),
+                json={"LocationIndicatorActive": on},
+                timeout=self.timeout,
+            )
+        if r.status_code in (200, 202, 204):
+            return
+
+        with self._suppress_ssl_warnings():
+            r2 = self.session.patch(
+                self._url(chassis_ref),
+                json={"IndicatorLED": "Lit" if on else "Off"},
+                timeout=self.timeout,
+            )
+        if r2.status_code not in (200, 202, 204):
+            raise BMCError(
+                f"Identify LED action failed: HTTP {r.status_code} {r.text[:200]}"
+            )
+
+    # --- センサーテレメトリ ---------------------------------------------------
+    def get_sensors(self) -> list[SensorReading]:
+        """Chassis.Thermal/Power から温度・Fan・電圧・消費電力の実測値を取得。
+
+        _collect_psu/_collect_fans と同じ Chassis 探索を再利用し、
+        今度は数値フィールド (ReadingCelsius/Reading/ReadingVolts/
+        PowerConsumedWatts) を読む。
+        """
+        root = self._get("/redfish/v1")
+        systems = self._collection(root, "Systems")
+        if not systems:
+            raise BMCError("No ComputerSystem found")
+        sysres = systems[0]
+
+        readings: list[SensorReading] = []
+        for chassis_ref in sysres.get("Links", {}).get("Chassis", [])[:1]:
+            chassis = self._get_optional(chassis_ref.get("@odata.id", ""))
+            if not chassis:
+                continue
+
+            thermal_ref = chassis.get("Thermal", {}).get("@odata.id")
+            thermal = self._get_optional(thermal_ref) if thermal_ref else None
+            if thermal:
+                for t in thermal.get("Temperatures", []):
+                    if (t.get("Status") or {}).get("State") == "Absent":
+                        continue
+                    readings.append(SensorReading(
+                        name=t.get("Name") or t.get("MemberId") or "Temperature",
+                        kind="temperature",
+                        value=t.get("ReadingCelsius"),
+                        units="°C",
+                        status=(t.get("Status") or {}).get("Health") or "",
+                    ))
+                for f in thermal.get("Fans", []):
+                    if (f.get("Status") or {}).get("State") == "Absent":
+                        continue
+                    readings.append(SensorReading(
+                        name=f.get("FanName") or f.get("Name") or f.get("MemberId") or "Fan",
+                        kind="fan",
+                        value=f.get("Reading"),
+                        units=f.get("ReadingUnits") or "RPM",
+                        status=(f.get("Status") or {}).get("Health") or "",
+                    ))
+
+            power_ref = chassis.get("Power", {}).get("@odata.id")
+            power = self._get_optional(power_ref) if power_ref else None
+            if power:
+                for v in power.get("Voltages", []):
+                    if (v.get("Status") or {}).get("State") == "Absent":
+                        continue
+                    readings.append(SensorReading(
+                        name=v.get("Name") or v.get("MemberId") or "Voltage",
+                        kind="voltage",
+                        value=v.get("ReadingVolts"),
+                        units="V",
+                        status=(v.get("Status") or {}).get("Health") or "",
+                    ))
+                for pc in power.get("PowerControl", []):
+                    readings.append(SensorReading(
+                        name=pc.get("Name") or pc.get("MemberId") or "Power",
+                        kind="power",
+                        value=pc.get("PowerConsumedWatts"),
+                        units="W",
+                        status=(pc.get("Status") or {}).get("Health") or "",
+                    ))
+
+        return readings
 
     # --- System Event Log ---------------------------------------------------
     def get_event_log(self, limit: int = 20) -> list[SelEntry]:

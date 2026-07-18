@@ -106,6 +106,15 @@ msgstr "電源操作に失敗しました: %(error)s"
 msgid "Power action '%(action)s' sent successfully."
 msgstr "電源操作 '%(action)s' を送信しました。"
 
+msgid "Identify action failed: %(error)s"
+msgstr "Identify操作に失敗しました: %(error)s"
+
+msgid "Identify LED turned on."
+msgstr "Identify LEDを点灯しました。"
+
+msgid "Identify LED turned off."
+msgstr "Identify LEDを消灯しました。"
+
 msgid "fetch_raw not supported for this protocol"
 msgstr "このプロトコルでは fetch_raw はサポートされていません"
 
@@ -175,6 +184,12 @@ msgstr "リセット"
 msgid "Reset?"
 msgstr "リセットしますか?"
 
+msgid "Identify On"
+msgstr "Identify点灯"
+
+msgid "Identify Off"
+msgstr "Identify消灯"
+
 msgid "Raw Data"
 msgstr "Raw データ"
 
@@ -225,6 +240,24 @@ msgstr "パスワード(フォールバック)"
 
 msgid "stored (plaintext)"
 msgstr "保存済み(平文)"
+
+msgid "BMC Firmware"
+msgstr "BMCファームウェア"
+
+msgid "BMC Health"
+msgstr "BMCヘルス"
+
+msgid "Sensors"
+msgstr "センサー"
+
+msgid "Name"
+msgstr "名前"
+
+msgid "Reading"
+msgstr "測定値"
+
+msgid "No sensors detected."
+msgstr "センサーが検出されませんでした。"
 
 msgid "Event Log"
 msgstr "イベントログ"
