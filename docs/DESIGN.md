@@ -207,26 +207,26 @@ erDiagram
     IPAddress ||--o{ BMCEndpoint : "管理IP"
 
     BMCEndpoint {
-        FK device "OneToOne, CASCADE"
-        FK ip_address "PROTECT"
+        int device_id FK "OneToOne CASCADE"
+        int ip_address_id FK "PROTECT"
         int port "nullable"
-        str protocol "auto|redfish|wsman|ipmi"
+        string protocol "auto or redfish or wsman or ipmi"
         bool verify_ssl
-        str username "平文フォールバック用"
-        str password "平文フォールバック用"
-        str detected_vendor
-        str detected_protocol
-        str detected_serial
-        str detected_firmware_version "Inventoryスキャンで取得"
+        string username "平文フォールバック用"
+        string password "平文フォールバック用"
+        string detected_vendor
+        string detected_protocol
+        string detected_serial
+        string detected_firmware_version "Inventoryスキャンで取得"
         datetime last_sync "Inventoryスキャンの最終実行日時"
-        str last_sync_status "OK or Error:..."
-        json network_interfaces "list[BmcNetworkInterface]"
+        string last_sync_status "OK or Error"
+        json network_interfaces "list of BmcNetworkInterface"
         datetime network_last_sync
-        json sensors "list[SensorReading]"
+        json sensors "list of SensorReading"
         datetime sensors_last_sync
-        json event_log "list[SelEntry]"
+        json event_log "list of SelEntry"
         datetime event_log_last_sync
-        str manager_health
+        string manager_health
         datetime manager_health_last_sync
     }
 ```
