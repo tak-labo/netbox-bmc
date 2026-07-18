@@ -21,28 +21,32 @@
 
     <div class="card mt-3">
       <h5 class="card-header">{% trans "Network" %}</h5>
-      <table class="table table-hover attr-table">
-        <tr><th scope="row">{% trans "DHCP" %}</th>
-            <td><span id="bmc-net-dhcp">…</span></td></tr>
-        <tr><th scope="row">{% trans "IPv4 Address" %}</th>
-            <td><span id="bmc-net-ipv4">…</span></td></tr>
-        <tr><th scope="row">{% trans "Subnet Mask" %}</th>
-            <td><span id="bmc-net-mask">…</span></td></tr>
-        <tr><th scope="row">{% trans "Gateway" %}</th>
-            <td><span id="bmc-net-gateway">…</span></td></tr>
-        <tr><th scope="row">{% trans "DNS Servers" %}</th>
-            <td><span id="bmc-net-dns">…</span></td></tr>
-        <tr><th scope="row">{% trans "Hostname" %}</th>
-            <td><span id="bmc-net-hostname">…</span></td></tr>
-        <tr><th scope="row">{% trans "FQDN" %}</th>
-            <td><span id="bmc-net-fqdn">…</span></td></tr>
-        <tr><th scope="row">{% trans "VLAN" %}</th>
-            <td><span id="bmc-net-vlan">…</span></td></tr>
-        <tr><th scope="row">{% trans "MAC Address" %}</th>
-            <td><span id="bmc-net-mac">…</span></td></tr>
-        <tr><th scope="row">{% trans "Link Status" %}</th>
-            <td><span id="bmc-net-link">…</span></td></tr>
-      </table>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>{% trans "Interface" %}</th>
+                <th>{% trans "Link Status" %}</th>
+                <th>{% trans "DHCP" %}</th>
+                <th>{% trans "IPv4 Address" %}</th>
+                <th>{% trans "Subnet Mask" %}</th>
+                <th>{% trans "Gateway" %}</th>
+                <th>{% trans "IPv6 Address" %}</th>
+                <th>{% trans "IPv6 Gateway" %}</th>
+                <th>{% trans "VLAN" %}</th>
+                <th>{% trans "MAC Address" %}</th>
+                <th>{% trans "Hostname" %}</th>
+                <th>{% trans "FQDN" %}</th>
+                <th>{% trans "DNS Servers" %}</th>
+              </tr>
+            </thead>
+            <tbody id="bmc-net-body">
+              <tr><td colspan="13" class="text-center text-muted">…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
 
     <div class="card mt-3">
@@ -272,44 +276,64 @@
 
 (function () {
   const url = "{% url 'plugins:netbox_bmc:bmcendpoint_network' pk=object.pk %}";
+  const body = document.getElementById("bmc-net-body");
   const i18n = {
     yes: "{% trans 'Yes' %}",
     no: "{% trans 'No' %}",
     disabled: "{% trans 'disabled' %}",
     error: "{% trans 'error' %}",
     unreachable: "{% trans 'unreachable' %}",
+    noInterfaces: "{% trans 'No network interfaces found.' %}",
   };
-  const placeholder = "—";
-  const fields = ["dhcp", "ipv4", "mask", "gateway", "dns", "hostname", "fqdn", "vlan", "mac", "link"];
 
-  function setAll(text) {
-    fields.forEach((f) => {
-      const el = document.getElementById("bmc-net-" + f);
-      if (el) { el.textContent = text; }
-    });
+  function setMessage(text) {
+    body.textContent = "";
+    const tr = document.createElement("tr");
+    const td = document.createElement("td");
+    td.colSpan = 13;
+    td.className = "text-center text-muted";
+    td.textContent = text;
+    tr.appendChild(td);
+    body.appendChild(tr);
   }
 
-  function setField(field, value) {
-    const el = document.getElementById("bmc-net-" + field);
-    if (el) { el.textContent = (value === null || value === undefined || value === "") ? placeholder : value; }
+  function cell(text) {
+    const td = document.createElement("td");
+    td.textContent = (text === null || text === undefined || text === "") ? "—" : text;
+    return td;
   }
 
   fetch(url)
     .then((r) => r.json())
     .then((data) => {
-      if (data.error) { setAll(data.error); return; }
-      setField("dhcp", data.dhcp_enabled === true ? i18n.yes : (data.dhcp_enabled === false ? i18n.no : null));
-      setField("ipv4", data.ipv4_address);
-      setField("mask", data.ipv4_subnet_mask);
-      setField("gateway", data.ipv4_gateway);
-      setField("dns", (data.dns_servers || []).join(", "));
-      setField("hostname", data.hostname);
-      setField("fqdn", data.fqdn);
-      setField("vlan", data.vlan_id ? (data.vlan_id + (data.vlan_enabled === false ? " (" + i18n.disabled + ")" : "")) : null);
-      setField("mac", data.mac_address);
-      setField("link", data.link_status);
+      if (!Array.isArray(data)) {
+        setMessage(data.error || i18n.error);
+        return;
+      }
+      if (data.length === 0) {
+        setMessage(i18n.noInterfaces);
+        return;
+      }
+      body.textContent = "";
+      data.forEach((iface) => {
+        const tr = document.createElement("tr");
+        tr.appendChild(cell(iface.name));
+        tr.appendChild(cell(iface.link_status));
+        tr.appendChild(cell(iface.dhcp_enabled === true ? i18n.yes : (iface.dhcp_enabled === false ? i18n.no : null)));
+        tr.appendChild(cell(iface.ipv4_address));
+        tr.appendChild(cell(iface.ipv4_subnet_mask));
+        tr.appendChild(cell(iface.ipv4_gateway));
+        tr.appendChild(cell((iface.ipv6_addresses || []).join(", ")));
+        tr.appendChild(cell(iface.ipv6_gateway));
+        tr.appendChild(cell(iface.vlan_id ? (iface.vlan_id + (iface.vlan_enabled === false ? " (" + i18n.disabled + ")" : "")) : null));
+        tr.appendChild(cell(iface.mac_address));
+        tr.appendChild(cell(iface.hostname));
+        tr.appendChild(cell(iface.fqdn));
+        tr.appendChild(cell((iface.dns_servers || []).join(", ")));
+        body.appendChild(tr);
+      });
     })
-    .catch(() => { setAll(i18n.unreachable); });
+    .catch(() => { setMessage(i18n.unreachable); });
 })();
 
 (function () {

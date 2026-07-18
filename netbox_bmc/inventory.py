@@ -46,15 +46,20 @@ class InventoryResult:
 
 @dataclass
 class BmcNetworkInterface:
-    """BMC (管理コントローラ) 自身のネットワーク設定。
+    """BMC (管理コントローラ) 自身のネットワーク設定 (インターフェース1枚分)。
 
-    get_network_config() の戻り値。InventoryResult とは別に、
-    Power Status と同様にページ表示のたびにライブ取得する (DB には保存しない)。
+    get_network_config() は BMC が持つ複数のインターフェース (専用ポート/
+    ホストと共有するポート/ボンディング等) をそれぞれ返すため list[BmcNetworkInterface]
+    を戻す。InventoryResult とは別に、Power Status と同様にページ表示のたびに
+    ライブ取得する (DB には保存しない)。
     """
+    name: str = ""
     dhcp_enabled: bool | None = None
     ipv4_address: str = ""
     ipv4_subnet_mask: str = ""
     ipv4_gateway: str = ""
+    ipv6_addresses: list[str] = field(default_factory=list)
+    ipv6_gateway: str = ""
     dns_servers: list[str] = field(default_factory=list)
     mac_address: str = ""
     hostname: str = ""

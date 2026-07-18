@@ -256,6 +256,9 @@ msgstr "電源操作"
 msgid "Network"
 msgstr "ネットワーク"
 
+msgid "Interface"
+msgstr "インターフェース"
+
 msgid "DHCP"
 msgstr "DHCP"
 
@@ -267,6 +270,15 @@ msgstr "サブネットマスク"
 
 msgid "Gateway"
 msgstr "ゲートウェイ"
+
+msgid "IPv6 Address"
+msgstr "IPv6 アドレス"
+
+msgid "IPv6 Gateway"
+msgstr "IPv6 ゲートウェイ"
+
+msgid "No network interfaces found."
+msgstr "ネットワークインターフェースが見つかりませんでした。"
 
 msgid "DNS Servers"
 msgstr "DNSサーバー"

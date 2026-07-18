@@ -42,7 +42,8 @@ class BaseDriver:
     def get_network_config(self):
         """BMC 自身のネットワーク設定 (DHCP/静的IP/DNS/ゲートウェイ等) を返す。
 
-        戻り値: inventory.BmcNetworkInterface
+        BMC は専用ポート/共有ポート/ボンディング等、複数のインターフェースを
+        持つことがあるため list[inventory.BmcNetworkInterface] を返す。
         プロトコルが未対応の場合は NotImplementedError を送出する。
         """
         raise NotImplementedError
