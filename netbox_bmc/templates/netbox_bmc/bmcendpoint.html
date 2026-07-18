@@ -22,18 +22,20 @@
     <div class="card mt-3">
       <h5 class="card-header">{% trans "Credentials" %}</h5>
       <table class="table table-hover attr-table">
-        {% if secrets_available %}
-          <tr>
-            <th scope="row">netbox-secrets</th>
-            <td>
+        <tr>
+          <th scope="row">{% trans "Source" %}</th>
+          <td>
+            {% if secrets_available %}
               {% if secret_found %}
                 <span class="badge bg-success">
-                  <i class="mdi mdi-lock-check"></i> {% trans "Secret found (bmc-credentials role)" %}
+                  <i class="mdi mdi-lock-check"></i> netbox-secrets
                 </span>
+                <span class="text-muted small ms-1">{% trans "Secret found (bmc-credentials role)" %}</span>
               {% else %}
                 <span class="badge bg-warning text-dark">
-                  <i class="mdi mdi-lock-alert"></i> {% trans "No secret found for this device" %}
+                  <i class="mdi mdi-lock-alert"></i> netbox-secrets
                 </span>
+                <span class="text-muted small ms-1">{% trans "No secret found for this device" %}</span>
                 <div class="text-muted small mt-1">
                   {% trans "Add a Secret with role" %} <code>bmc-credentials</code>
                   {% trans "assigned to" %} <strong>{{ object.device }}</strong>.<br>
@@ -44,16 +46,14 @@
                   {% endif %}
                 </div>
               {% endif %}
-            </td>
-          </tr>
-        {% else %}
-          <tr>
-            <td colspan="2">
-              <span class="badge bg-secondary">netbox-secrets not installed</span>
-              — {% trans "credentials stored in plaintext fields below." %}
-            </td>
-          </tr>
-        {% endif %}
+            {% else %}
+              <span class="badge bg-secondary">{% trans "Plaintext" %}</span>
+              <span class="text-muted small ms-1">
+                netbox-secrets {% trans "not installed" %} — {% trans "credentials stored in plaintext fields below." %}
+              </span>
+            {% endif %}
+          </td>
+        </tr>
         {% if object.username %}
           <tr><th scope="row">{% trans "Username (fallback)" %}</th>
               <td><code>{{ object.username }}</code></td></tr>

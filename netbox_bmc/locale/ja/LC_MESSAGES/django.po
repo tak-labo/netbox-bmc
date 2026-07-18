@@ -193,6 +193,15 @@ msgstr "SSL検証"
 msgid "Credentials"
 msgstr "認証情報"
 
+msgid "Source"
+msgstr "取得元"
+
+msgid "Plaintext"
+msgstr "平文"
+
+msgid "not installed"
+msgstr "未インストール"
+
 msgid "Secret found (bmc-credentials role)"
 msgstr "シークレットが見つかりました (bmc-credentials ロール)"
 
