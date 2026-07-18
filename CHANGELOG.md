@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+## [0.4.26] - 2026-07-18
+
+- fix(credentials): decrypt the netbox-secrets session-key path via the `SessionKey` model
+  instead of `UserKey` — the previous code read the session cookie under the wrong name
+  (`session_key` instead of the actual `netbox_secrets_sessionid`) and called
+  `UserKey.get_master_key()`, which is RSA-private-key-only and always failed when given a
+  session key. This silently fell back to the plaintext username/password fields for every
+  UI-triggered action (Build Modules, power control, Identify, Test Connection, etc.), so a
+  BMCEndpoint relying purely on netbox-secrets would connect with empty credentials. Verified
+  end-to-end against the real netbox-secrets library for both the UI (SessionKey) and
+  background-job (service account) decryption paths (#57)
+- docs: add `docs/NETBOX_SECRETS.md` setup and verification guide for the netbox-secrets
+  integration (#57)
+
 ## [0.4.25] - 2026-07-18
 
 - fix(forms): make `password` optional on the BMC Endpoint add/edit form — it was forced
