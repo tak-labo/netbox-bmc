@@ -26,7 +26,10 @@ class BMCEndpointForm(NetBoxModelForm):
         label=_("IP Address"),
         help_text=_("Select the BMC management IP assigned to the Device"),
     )
-    password = forms.CharField(widget=forms.PasswordInput(render_value=True))
+    password = forms.CharField(
+        widget=forms.PasswordInput(render_value=True), required=False,
+        help_text=_("Fallback when netbox-secrets is not available (plaintext)"),
+    )
 
     fieldsets = (
         FieldSet("device_role", "device", "ip_address", name=_("Device")),
