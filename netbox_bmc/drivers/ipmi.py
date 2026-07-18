@@ -150,11 +150,10 @@ class IPMIDriver(BaseDriver):
             if "error" in resp:
                 raise BMCError(resp["error"])
             data = resp["data"]
-            firmware_version = "{0}.{1}{2}".format(
-                data[2] & 0b1111111,
-                (data[3] >> 4) & 0b1111,
-                data[3] & 0b1111,
-            )
+            major = data[2] & 0b1111111
+            minor_hi = (data[3] >> 4) & 0b1111
+            minor_lo = data[3] & 0b1111
+            firmware_version = f"{major}.{minor_hi}{minor_lo}"
         except BMCError:
             raise
         except Exception as e:
