@@ -159,6 +159,25 @@
             <td>{{ object.last_sync_status|placeholder }}</td></tr>
       </table>
     </div>
+
+    <div class="card mt-3">
+      <h5 class="card-header">{% trans "Sensors" %}</h5>
+      <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>{% trans "Name" %}</th>
+              <th>{% trans "Kind" %}</th>
+              <th>{% trans "Reading" %}</th>
+              <th>{% trans "Status" %}</th>
+            </tr>
+          </thead>
+          <tbody id="bmc-sensors-body">
+            <tr><td colspan="4" class="text-center text-muted">…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
   </div>
 </div>
 {% endblock %}
@@ -181,6 +200,59 @@
       text.textContent = data.error ? i18n.error : (data.state ? data.state.toLowerCase() : i18n.unknown);
     })
     .catch(() => { text.textContent = i18n.unreachable; });
+})();
+
+(function () {
+  const url = "{% url 'plugins:netbox_bmc:bmcendpoint_sensors' pk=object.pk %}";
+  const body = document.getElementById("bmc-sensors-body");
+  const i18n = {
+    error: "{% trans 'error' %}",
+    unreachable: "{% trans 'unreachable' %}",
+    noSensors: "{% trans 'No sensors detected.' %}",
+  };
+
+  function setMessage(text) {
+    body.textContent = "";
+    const tr = document.createElement("tr");
+    const td = document.createElement("td");
+    td.colSpan = 4;
+    td.className = "text-center text-muted";
+    td.textContent = text;
+    tr.appendChild(td);
+    body.appendChild(tr);
+  }
+
+  function cell(text) {
+    const td = document.createElement("td");
+    td.textContent = (text === null || text === undefined || text === "") ? "—" : text;
+    return td;
+  }
+
+  fetch(url)
+    .then((r) => r.json())
+    .then((data) => {
+      if (!Array.isArray(data)) {
+        setMessage(data.error || i18n.error);
+        return;
+      }
+      if (data.length === 0) {
+        setMessage(i18n.noSensors);
+        return;
+      }
+      body.textContent = "";
+      data.forEach((reading) => {
+        const tr = document.createElement("tr");
+        tr.appendChild(cell(reading.name));
+        tr.appendChild(cell(reading.kind));
+        const valueText = (reading.value === null || reading.value === undefined)
+          ? null
+          : reading.value + (reading.units ? (" " + reading.units) : "");
+        tr.appendChild(cell(valueText));
+        tr.appendChild(cell(reading.status));
+        body.appendChild(tr);
+      });
+    })
+    .catch(() => { setMessage(i18n.unreachable); });
 })();
 </script>
 {% endblock %}

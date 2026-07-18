@@ -1,4 +1,6 @@
 
+from dataclasses import asdict
+
 from dcim.models import Device
 from django.contrib import messages
 from django.http import JsonResponse
@@ -248,6 +250,27 @@ class PowerStatusView(View):
             return JsonResponse({"error": str(e)}, status=500)
 
         return JsonResponse({"state": state})
+
+
+class SensorsView(View):
+    """GET: センサーテレメトリ (温度/Fan/電圧/消費電力) を JSON で返す (ライブ取得、DB保存なし)。"""
+
+    def get(self, request, pk):
+        endpoint = get_object_or_404(BMCEndpoint, pk=pk)
+        if not request.user.has_perm("netbox_bmc.view_bmcendpoint"):
+            return JsonResponse({"error": _("Permission denied.")}, status=403)
+
+        try:
+            with endpoint.get_driver(request=request) as driver:
+                readings = driver.get_sensors()
+        except NotImplementedError:
+            return JsonResponse(
+                {"error": _("Not supported for this protocol")}, status=501,
+            )
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
+
+        return JsonResponse([asdict(r) for r in readings], safe=False)
 
 
 class FetchRawView(View):

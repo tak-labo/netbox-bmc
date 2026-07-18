@@ -42,3 +42,17 @@ class InventoryResult:
     vendor: str = ""        # 検出したベンダー名 (Dell, HPE, Lenovo, ...)
     protocol: str = ""      # redfish | ipmi
     raw: dict = field(default_factory=dict)  # デバッグ用の生データ(任意)
+
+
+@dataclass
+class SensorReading:
+    """温度・電圧・消費電力・Fan回転数などのセンサー実測値。
+
+    get_sensors() の戻り値。Power Status と同様にページ表示のたびに
+    ライブ取得する (DB には保存しない)。
+    """
+    name: str
+    kind: str               # temperature | fan | voltage | power
+    value: float | None = None
+    units: str = ""
+    status: str = ""
