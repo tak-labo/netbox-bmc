@@ -1,4 +1,6 @@
 
+from dataclasses import asdict
+
 from dcim.models import Device
 from django.contrib import messages
 from django.http import JsonResponse
@@ -233,6 +235,31 @@ class PowerActionView(View):
         return redirect(endpoint.get_absolute_url())
 
 
+class IdentifyActionView(View):
+    """POST: Identify LED の点灯/消灯。"""
+
+    def post(self, request, pk):
+        endpoint = get_object_or_404(BMCEndpoint, pk=pk)
+        if not request.user.has_perm("netbox_bmc.change_bmcendpoint"):
+            messages.error(request, _("Permission denied."))
+            return redirect(endpoint.get_absolute_url())
+
+        on = request.POST.get("on") == "true"
+
+        try:
+            with endpoint.get_driver(request=request) as driver:
+                driver.set_identify(on)
+        except Exception as e:
+            messages.error(request, _("Identify action failed: %(error)s") % {"error": e})
+            return redirect(endpoint.get_absolute_url())
+
+        if on:
+            messages.success(request, _("Identify LED turned on."))
+        else:
+            messages.success(request, _("Identify LED turned off."))
+        return redirect(endpoint.get_absolute_url())
+
+
 class PowerStatusView(View):
     """GET: 現在の電源状態を JSON で返す。"""
 
@@ -248,6 +275,95 @@ class PowerStatusView(View):
             return JsonResponse({"error": str(e)}, status=500)
 
         return JsonResponse({"state": state})
+
+
+class NetworkConfigView(View):
+    """GET: BMC 自身のネットワーク設定を JSON で返す (ライブ取得、DB保存なし)。"""
+
+    def get(self, request, pk):
+        endpoint = get_object_or_404(BMCEndpoint, pk=pk)
+        if not request.user.has_perm("netbox_bmc.view_bmcendpoint"):
+            return JsonResponse({"error": _("Permission denied.")}, status=403)
+
+        try:
+            with endpoint.get_driver(request=request) as driver:
+                net = driver.get_network_config()
+        except NotImplementedError:
+            return JsonResponse(
+                {"error": _("Not supported for this protocol")}, status=501,
+            )
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
+
+        return JsonResponse(asdict(net))
+
+
+class ManagerInfoView(View):
+    """GET: BMC 自身のファームウェア/ヘルスを JSON で返す (ライブ取得、DB保存なし)。"""
+
+    def get(self, request, pk):
+        endpoint = get_object_or_404(BMCEndpoint, pk=pk)
+        if not request.user.has_perm("netbox_bmc.view_bmcendpoint"):
+            return JsonResponse({"error": _("Permission denied.")}, status=403)
+
+        try:
+            with endpoint.get_driver(request=request) as driver:
+                info = driver.get_manager_info()
+        except NotImplementedError:
+            return JsonResponse(
+                {"error": _("Not supported for this protocol")}, status=501,
+            )
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
+
+        return JsonResponse(asdict(info))
+
+
+class SensorsView(View):
+    """GET: センサーテレメトリ (温度/Fan/電圧/消費電力) を JSON で返す (ライブ取得、DB保存なし)。"""
+
+    def get(self, request, pk):
+        endpoint = get_object_or_404(BMCEndpoint, pk=pk)
+        if not request.user.has_perm("netbox_bmc.view_bmcendpoint"):
+            return JsonResponse({"error": _("Permission denied.")}, status=403)
+
+        try:
+            with endpoint.get_driver(request=request) as driver:
+                readings = driver.get_sensors()
+        except NotImplementedError:
+            return JsonResponse(
+                {"error": _("Not supported for this protocol")}, status=501,
+            )
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
+
+        return JsonResponse([asdict(r) for r in readings], safe=False)
+
+
+class EventLogView(View):
+    """GET: System Event Log (SEL) の直近エントリを JSON で返す (ライブ取得、DB保存なし)。"""
+
+    def get(self, request, pk):
+        endpoint = get_object_or_404(BMCEndpoint, pk=pk)
+        if not request.user.has_perm("netbox_bmc.view_bmcendpoint"):
+            return JsonResponse({"error": _("Permission denied.")}, status=403)
+
+        try:
+            limit = min(int(request.GET.get("limit", 20)), 100)
+        except (ValueError, TypeError):
+            limit = 20
+
+        try:
+            with endpoint.get_driver(request=request) as driver:
+                entries = driver.get_event_log(limit=limit)
+        except NotImplementedError:
+            return JsonResponse(
+                {"error": _("Not supported for this protocol")}, status=501,
+            )
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
+
+        return JsonResponse([asdict(e) for e in entries], safe=False)
 
 
 class FetchRawView(View):

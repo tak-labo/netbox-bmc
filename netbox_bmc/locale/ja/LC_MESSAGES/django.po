@@ -106,6 +106,15 @@ msgstr "電源操作に失敗しました: %(error)s"
 msgid "Power action '%(action)s' sent successfully."
 msgstr "電源操作 '%(action)s' を送信しました。"
 
+msgid "Identify action failed: %(error)s"
+msgstr "Identify操作に失敗しました: %(error)s"
+
+msgid "Identify LED turned on."
+msgstr "Identify LEDを点灯しました。"
+
+msgid "Identify LED turned off."
+msgstr "Identify LEDを消灯しました。"
+
 msgid "fetch_raw not supported for this protocol"
 msgstr "このプロトコルでは fetch_raw はサポートされていません"
 
@@ -175,6 +184,12 @@ msgstr "リセット"
 msgid "Reset?"
 msgstr "リセットしますか?"
 
+msgid "Identify On"
+msgstr "Identify点灯"
+
+msgid "Identify Off"
+msgstr "Identify消灯"
+
 msgid "Raw Data"
 msgstr "Raw データ"
 
@@ -237,6 +252,84 @@ msgstr "保存済み(プレーンテキスト)"
 
 msgid "Power Control"
 msgstr "電源操作"
+
+msgid "Network"
+msgstr "ネットワーク"
+
+msgid "DHCP"
+msgstr "DHCP"
+
+msgid "IPv4 Address"
+msgstr "IPv4 アドレス"
+
+msgid "Subnet Mask"
+msgstr "サブネットマスク"
+
+msgid "Gateway"
+msgstr "ゲートウェイ"
+
+msgid "DNS Servers"
+msgstr "DNSサーバー"
+
+msgid "Hostname"
+msgstr "ホスト名"
+
+msgid "FQDN"
+msgstr "FQDN"
+
+msgid "VLAN"
+msgstr "VLAN"
+
+msgid "MAC Address"
+msgstr "MACアドレス"
+
+msgid "Link Status"
+msgstr "リンク状態"
+
+msgid "BMC Firmware"
+msgstr "BMCファームウェア"
+
+msgid "BMC Health"
+msgstr "BMCヘルス"
+
+msgid "Sensors"
+msgstr "センサー"
+
+msgid "Name"
+msgstr "名前"
+
+msgid "Reading"
+msgstr "測定値"
+
+msgid "No sensors detected."
+msgstr "センサーが検出されませんでした。"
+
+msgid "Event Log"
+msgstr "イベントログ"
+
+msgid "Time"
+msgstr "時刻"
+
+msgid "Severity"
+msgstr "重大度"
+
+msgid "Message"
+msgstr "メッセージ"
+
+msgid "No event log entries found."
+msgstr "イベントログのエントリが見つかりませんでした。"
+
+msgid "Not supported for this protocol"
+msgstr "このプロトコルではサポートされていません"
+
+msgid "Yes"
+msgstr "はい"
+
+msgid "No"
+msgstr "いいえ"
+
+msgid "disabled"
+msgstr "無効"
 
 msgid "Sync Status"
 msgstr "同期ステータス"
