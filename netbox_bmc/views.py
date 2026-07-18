@@ -1,14 +1,17 @@
 
+from dcim.models import Device
 from django.contrib import messages
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.translation import gettext_lazy as _
 from django.views.generic import View
+from ipam.models import IPAddress
 from netbox.views import generic
 
 from . import forms, tables
-from .models import BMCEndpoint
+from .models import BMCEndpoint, Protocol
 
 
 class BMCEndpointListView(generic.ObjectListView):
@@ -45,6 +48,7 @@ class BMCEndpointView(generic.ObjectView):
 class BMCEndpointEditView(generic.ObjectEditView):
     queryset = BMCEndpoint.objects.all()
     form = forms.BMCEndpointForm
+    template_name = "netbox_bmc/bmcendpoint_edit.html"
 
 
 class BMCEndpointDeleteView(generic.ObjectDeleteView):
@@ -57,7 +61,7 @@ class BuildModulesView(View):
     def post(self, request, pk):
         endpoint = get_object_or_404(BMCEndpoint, pk=pk)
         if not request.user.has_perm("netbox_bmc.change_bmcendpoint"):
-            messages.error(request, "Permission denied.")
+            messages.error(request, _("Permission denied."))
             return redirect(endpoint.get_absolute_url())
 
         try:
@@ -65,9 +69,9 @@ class BuildModulesView(View):
                 result = driver.get_inventory()
         except Exception as e:
             endpoint.last_sync = timezone.now()
-            endpoint.last_sync_status = f"Error: {e}"
+            endpoint.last_sync_status = f"Error: {e}"[:255]
             endpoint.save(update_fields=["last_sync", "last_sync_status"])
-            messages.error(request, f"BMC scan failed: {e}")
+            messages.error(request, _("BMC scan failed: %(error)s") % {"error": e})
             return redirect(endpoint.get_absolute_url())
 
         from .module_sync import compute_diff, entry_to_dict
@@ -76,7 +80,7 @@ class BuildModulesView(View):
         serial = result.system.serial
         endpoint.detected_vendor = result.vendor
         endpoint.detected_protocol = result.protocol
-        endpoint.detected_serial = serial
+        endpoint.detected_serial = (serial or "")[:255]
         endpoint.last_sync = timezone.now()
         endpoint.last_sync_status = "OK"
         endpoint.save(update_fields=[
@@ -121,26 +125,26 @@ class BuildModulesPreviewView(View):
     def get(self, request, pk):
         endpoint = get_object_or_404(BMCEndpoint, pk=pk)
         if not request.user.has_perm("netbox_bmc.view_bmcendpoint"):
-            messages.error(request, "Permission denied.")
+            messages.error(request, _("Permission denied."))
             return redirect(endpoint.get_absolute_url())
 
         session_key = f"bmc_module_preview_{pk}"
         session_data = request.session.get(session_key)
         if not session_data:
-            messages.warning(request, "No scan data found. Please run a scan first.")
+            messages.warning(request, _("No scan data found. Please run a scan first."))
             return redirect(endpoint.get_absolute_url())
 
         # (kind, label, default_checked)
         KIND_FILTERS = [
-            ("cpu",      "CPU",      True),
-            ("memory",   "Memory",   True),
-            ("drive",    "Drive",    True),
-            ("psu",      "PSU",      True),
-            ("fan",      "Fan",      False),
-            ("pci",      "PCI",      False),
-            ("firmware", "Firmware", False),
+            ("cpu",      _("CPU"),      True),
+            ("memory",   _("Memory"),   True),
+            ("drive",    _("Drive"),    True),
+            ("psu",      _("PSU"),      True),
+            ("fan",      _("Fan"),      False),
+            ("pci",      _("PCI"),      False),
+            ("firmware", _("Firmware"), False),
         ]
-        unchecked_kinds = {k for k, _, checked in KIND_FILTERS if not checked}
+        unchecked_kinds = {k for k, _label, checked in KIND_FILTERS if not checked}
 
         return render(request, "netbox_bmc/module_preview.html", {
             "object": endpoint,
@@ -164,13 +168,13 @@ class BuildModulesApplyView(View):
     def post(self, request, pk):
         endpoint = get_object_or_404(BMCEndpoint, pk=pk)
         if not request.user.has_perm("netbox_bmc.change_bmcendpoint"):
-            messages.error(request, "Permission denied.")
+            messages.error(request, _("Permission denied."))
             return redirect(endpoint.get_absolute_url())
 
         session_key = f"bmc_module_preview_{pk}"
         session_data = request.session.get(session_key)
         if not session_data:
-            messages.error(request, "Session expired. Please run a scan again.")
+            messages.error(request, _("Session expired. Please run a scan again."))
             return redirect(endpoint.get_absolute_url())
 
         selected_names = set(request.POST.getlist("selected"))
@@ -186,11 +190,13 @@ class BuildModulesApplyView(View):
 
         del request.session[session_key]
         fw_count = len(firmware)
-        messages.success(
-            request,
-            f"Modules applied: {report.summary()}"
-            + (f", firmware entries updated: {fw_count}" if fw_count else ""),
-        )
+        if fw_count:
+            summary_msg = _("Modules applied: %(summary)s (firmware entries updated: %(count)s)") % {
+                "summary": report.summary(), "count": fw_count,
+            }
+        else:
+            summary_msg = _("Modules applied: %(summary)s") % {"summary": report.summary()}
+        messages.success(request, summary_msg)
         for msg in report.messages:
             messages.warning(request, msg)
         return redirect(endpoint.get_absolute_url())
@@ -205,22 +211,25 @@ class PowerActionView(View):
     def post(self, request, pk):
         endpoint = get_object_or_404(BMCEndpoint, pk=pk)
         if not request.user.has_perm("netbox_bmc.change_bmcendpoint"):
-            messages.error(request, "Permission denied.")
+            messages.error(request, _("Permission denied."))
             return redirect(endpoint.get_absolute_url())
 
         action = request.POST.get("action", "")
         if action not in _POWER_ACTIONS:
-            messages.error(request, f"Unknown power action: {action}")
+            messages.error(request, _("Unknown power action: %(action)s") % {"action": action})
             return redirect(endpoint.get_absolute_url())
 
         try:
             with endpoint.get_driver(request=request) as driver:
                 driver.set_power(action)
         except Exception as e:
-            messages.error(request, f"Power action failed: {e}")
+            messages.error(request, _("Power action failed: %(error)s") % {"error": e})
             return redirect(endpoint.get_absolute_url())
 
-        messages.success(request, f"Power action '{action}' sent successfully.")
+        messages.success(
+            request,
+            _("Power action '%(action)s' sent successfully.") % {"action": action},
+        )
         return redirect(endpoint.get_absolute_url())
 
 
@@ -230,7 +239,7 @@ class PowerStatusView(View):
     def get(self, request, pk):
         endpoint = get_object_or_404(BMCEndpoint, pk=pk)
         if not request.user.has_perm("netbox_bmc.view_bmcendpoint"):
-            return JsonResponse({"error": "Permission denied."}, status=403)
+            return JsonResponse({"error": _("Permission denied.")}, status=403)
 
         try:
             with endpoint.get_driver(request=request) as driver:
@@ -247,7 +256,7 @@ class FetchRawView(View):
     def get(self, request, pk):
         endpoint = get_object_or_404(BMCEndpoint, pk=pk)
         if not request.user.has_perm("netbox_bmc.view_bmcendpoint"):
-            return JsonResponse({"error": "Permission denied."}, status=403)
+            return JsonResponse({"error": _("Permission denied.")}, status=403)
 
         try:
             depth = min(int(request.GET.get("depth", 2)), 5)
@@ -259,8 +268,62 @@ class FetchRawView(View):
                 if hasattr(driver, "fetch_raw"):
                     data = driver.fetch_raw(max_depth=depth)
                 else:
-                    data = {"error": "fetch_raw not supported for this protocol"}
+                    data = {"error": _("fetch_raw not supported for this protocol")}
         except Exception as e:
             data = {"error": str(e)}
 
         return JsonResponse(data, json_dumps_params={"indent": 2, "ensure_ascii": False})
+
+
+class ConnectivityTestView(View):
+    """POST: 保存前の Add/Edit フォーム入力値で BMC 接続確認を行う。"""
+
+    def post(self, request):
+        if not (request.user.has_perm("netbox_bmc.add_bmcendpoint")
+                or request.user.has_perm("netbox_bmc.change_bmcendpoint")):
+            return JsonResponse({"ok": False, "message": _("Permission denied.")}, status=403)
+
+        device_id = request.POST.get("device")
+        if not device_id:
+            return JsonResponse({"ok": False, "message": _("Please select a Device first.")})
+        device = Device.objects.filter(pk=device_id).first()
+        if device is None:
+            return JsonResponse({"ok": False, "message": _("The specified Device was not found.")})
+
+        ip_address_id = request.POST.get("ip_address")
+        if not ip_address_id:
+            return JsonResponse({"ok": False, "message": _("Please select an IP Address.")})
+        ip_address = IPAddress.objects.filter(pk=ip_address_id).first()
+        if ip_address is None:
+            return JsonResponse({"ok": False, "message": _("The specified IP Address was not found.")})
+
+        port = request.POST.get("port") or None
+        try:
+            port = int(port) if port else None
+        except ValueError:
+            return JsonResponse({"ok": False, "message": _("Port must be a number.")})
+
+        endpoint = BMCEndpoint(
+            device=device,
+            ip_address=ip_address,
+            port=port,
+            protocol=request.POST.get("protocol") or Protocol.AUTO,
+            verify_ssl=request.POST.get("verify_ssl") == "true",
+            username=request.POST.get("username", ""),
+            password=request.POST.get("password", ""),
+        )
+
+        try:
+            with endpoint.get_driver(request=request) as driver:
+                power_state = driver.get_power_state()
+                vendor = getattr(driver, "vendor", "")
+                protocol = driver.protocol
+        except Exception as e:
+            return JsonResponse({"ok": False, "message": str(e)[:500]})
+
+        parts = [f"protocol={protocol}"]
+        if vendor:
+            parts.append(f"vendor={vendor}")
+        parts.append(f"power={power_state}")
+        message = _("Connected (%(details)s)") % {"details": ", ".join(parts)}
+        return JsonResponse({"ok": True, "message": message})

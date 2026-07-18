@@ -1,0 +1,68 @@
+{% extends 'generic/object_edit.html' %}
+{% load i18n %}
+
+{% block buttons %}
+  <button type="button" id="bmc-test-connection-btn" class="btn btn-outline-info">
+    <i class="mdi mdi-lan-connect"></i> {% trans "Test Connection" %}
+  </button>
+  <span id="bmc-test-connection-result" class="ms-2"></span>
+  {{ block.super }}
+{% endblock %}
+
+{% block javascript %}
+{{ block.super }}
+<script>
+(function () {
+  const btn = document.getElementById("bmc-test-connection-btn");
+  const result = document.getElementById("bmc-test-connection-result");
+  if (!btn) return;
+
+  function setResult(ok, message) {
+    result.textContent = "";
+    const icon = document.createElement("i");
+    icon.className = "mdi " + (ok ? "mdi-check-circle text-success" : "mdi-alert-circle text-danger");
+    const span = document.createElement("span");
+    span.className = ok ? "text-success ms-1" : "text-danger ms-1";
+    span.textContent = message;
+    result.appendChild(icon);
+    result.appendChild(span);
+  }
+
+  function fieldValue(id) {
+    const el = document.getElementById(id);
+    return el ? el.value : "";
+  }
+
+  btn.addEventListener("click", function () {
+    const data = new FormData();
+    data.append("device", fieldValue("id_device"));
+    data.append("ip_address", fieldValue("id_ip_address"));
+    data.append("port", fieldValue("id_port"));
+    data.append("protocol", fieldValue("id_protocol"));
+    data.append("username", fieldValue("id_username"));
+    data.append("password", fieldValue("id_password"));
+    const verifySslEl = document.getElementById("id_verify_ssl");
+    data.append("verify_ssl", verifySslEl && verifySslEl.checked ? "true" : "false");
+
+    btn.disabled = true;
+    result.textContent = "";
+    const spinner = document.createElement("span");
+    spinner.className = "text-muted";
+    spinner.textContent = "{% trans 'Testing...' %}";
+    result.appendChild(spinner);
+
+    const csrfInput = document.querySelector("[name=csrfmiddlewaretoken]");
+
+    fetch("{% url 'plugins:netbox_bmc:bmcendpoint_test_connection' %}", {
+      method: "POST",
+      headers: csrfInput ? { "X-CSRFToken": csrfInput.value } : {},
+      body: data,
+    })
+      .then((r) => r.json())
+      .then((json) => setResult(!!json.ok, json.message || ""))
+      .catch(() => setResult(false, "{% trans 'Request failed.' %}"))
+      .finally(() => { btn.disabled = false; });
+  });
+})();
+</script>
+{% endblock %}

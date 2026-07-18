@@ -1,14 +1,15 @@
 from django.db import models
 from django.urls import reverse
+from django.utils.translation import gettext_lazy as _
 from netbox.models import NetBoxModel
 from netbox.models.features import JobsMixin
 
 
 class Protocol(models.TextChoices):
-    AUTO = "auto", "Auto-detect"
-    REDFISH = "redfish", "Redfish"
-    WSMAN = "wsman", "WS-MAN (Intel AMT)"
-    IPMI = "ipmi", "IPMI"
+    AUTO = "auto", _("Auto-detect")
+    REDFISH = "redfish", _("Redfish")
+    WSMAN = "wsman", _("WS-MAN (Intel AMT)")
+    IPMI = "ipmi", _("IPMI")
 
 
 class BMCEndpoint(JobsMixin, NetBoxModel):
@@ -19,7 +20,7 @@ class BMCEndpoint(JobsMixin, NetBoxModel):
     ip_address = models.ForeignKey(
         to="ipam.IPAddress", on_delete=models.PROTECT,
         related_name="bmc_endpoints",
-        help_text="Device に割り当てられた BMC 管理 IP",
+        help_text=_("BMC management IP assigned to the Device"),
     )
     port = models.PositiveIntegerField(blank=True, null=True)
     protocol = models.CharField(
@@ -35,11 +36,11 @@ class BMCEndpoint(JobsMixin, NetBoxModel):
     # ---
     username = models.CharField(
         max_length=128, blank=True,
-        help_text="Fallback when netbox-secrets is not available",
+        help_text=_("Fallback when netbox-secrets is not available"),
     )
     password = models.CharField(
         max_length=255, blank=True,
-        help_text="Fallback when netbox-secrets is not available (plaintext)",
+        help_text=_("Fallback when netbox-secrets is not available (plaintext)"),
     )
 
     # 同期ステータス
