@@ -2,6 +2,36 @@
 
 ## [Unreleased]
 
+- Network/Sensors/Event Log/BMC Health are now persisted to the database and refreshed via a
+  per-endpoint "Sync" button or an optional scheduled job (`*_sync_interval_minutes`), instead
+  of being fetched live on every page load
+- BMC Firmware is now refreshed as part of the Inventory scan (`detected_firmware_version`)
+  rather than a dedicated job, since it rarely changes; BMC Health keeps its own
+  `ManagerHealthSyncJob` since it can change independently
+- Rename the ambiguous "Last Sync"/"Status" labels in the Sync Status card to "Inventory Last
+  Sync"/"Inventory Scan Status" to disambiguate from the new per-feature sync timestamps
+- Add `docs/DESIGN.md` detailed design document with architecture/sequence diagrams
+- feat(network): show all BMC network interfaces (incl. IPv6), not just one (#50)
+- fix(redfish): send If-Match ETag on Identify LED PATCH requests, fixing `HTTP 428
+  Precondition Required` on strict Redfish implementations (#49)
+- feat(ui): show "View BMC Endpoint" in the Device page's top button row when a BMC Endpoint
+  exists for that Device (#48)
+- feat: fetch and display the System Event Log (SEL) (#47)
+- feat: fetch and display sensor telemetry (temperature/fan/voltage/power) (#46)
+- feat: add Identify LED control (#45)
+- feat: fetch and display the BMC's own firmware version and health (#44)
+- feat: fetch and display the BMC's own network configuration (#43)
+- refactor(ui): move power action buttons into a dedicated Power Control card above Sync
+  Status (#42)
+- fix(ui): remove Console quick-launch button from BMC Endpoint page (no working KVM launch
+  target existed) (#41)
+- docs: restore missing Apache-2.0 appendix section in LICENSE (#40)
+- feat(ui): add Device Role filter on the BMC Endpoint add form, a pre-save Test Connection
+  button, and English/Japanese (i18n) UI support across the plugin; keep `BMCEndpoint.Meta`'s
+  `verbose_name` untranslated to avoid a broken Japanese plural (#39)
+- feat(ui): add Web GUI and HTML5 console launch buttons (#38)
+- fix(ui): fix device BMC panel fields not displaying (#37)
+
 ## [0.4.23] - 2026-07-08
 
 - Add "Open Console" button to BMCEndpoint detail page with vendor-specific HTML5 KVM URL (Dell/HPE/Lenovo/Supermicro)
