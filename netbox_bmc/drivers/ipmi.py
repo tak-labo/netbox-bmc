@@ -10,7 +10,13 @@ from __future__ import annotations
 import logging
 import re as _re
 
-from ..inventory import Component, InventoryResult, SensorReading, SystemInfo
+from ..inventory import (
+    Component,
+    InventoryResult,
+    ManagerInfo,
+    SensorReading,
+    SystemInfo,
+)
 from .base import BaseDriver, BMCError
 
 logger = logging.getLogger("netbox_bmc.ipmi")
@@ -161,6 +167,52 @@ class IPMIDriver(BaseDriver):
             raise
         except Exception as e:
             raise BMCError(f"IPMI power action failed: {e}") from e
+
+    def get_manager_info(self) -> ManagerInfo:
+        """"Get Device ID" (netfn=0x06 cmd=0x01, 標準IPMI・OEM非依存) でファームウェア
+        バージョンを取得し、pyghmi の get_health() でヘルスを取得する。
+        """
+        try:
+            resp = self.cmd.raw_command(netfn=0x06, command=0x01)
+            if "error" in resp:
+                raise BMCError(resp["error"])
+            data = resp["data"]
+            major = data[2] & 0b1111111
+            minor_hi = (data[3] >> 4) & 0b1111
+            minor_lo = data[3] & 0b1111
+            firmware_version = f"{major}.{minor_hi}{minor_lo}"
+        except BMCError:
+            raise
+        except Exception as e:
+            raise BMCError(f"IPMI Get Device ID failed: {e}") from e
+
+        health = ""
+        try:
+            summary = self.cmd.get_health()
+            health_bits = summary.get("health", 0)
+            if health_bits & 4:
+                health = "Failed"
+            elif health_bits & 2:
+                health = "Critical"
+            elif health_bits & 1:
+                health = "Warning"
+            else:
+                health = "OK"
+        except Exception as e:
+            logger.debug("IPMI get_health failed (suppressed): %s", e)
+
+        return ManagerInfo(firmware_version=firmware_version, health=health)
+
+    def set_identify(self, on: bool) -> None:
+        """標準の "Chassis Identify" コマンド (netfn=0x00 cmd=0x04) を利用する。
+
+        pyghmi の set_identify() は既にこの raw コマンドを正しく組み立てる
+        実装を持つため、バイト処理を自前で再実装せずそのまま呼び出す。
+        """
+        try:
+            self.cmd.set_identify(on=on)
+        except Exception as e:
+            raise BMCError(f"IPMI identify action failed: {e}") from e
 
     def get_sensors(self) -> list[SensorReading]:
         """get_sensor_data() (既に _components_from_sensors で呼んでいる) の

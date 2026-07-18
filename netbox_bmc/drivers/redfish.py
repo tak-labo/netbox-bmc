@@ -16,7 +16,13 @@ import logging
 import requests
 import urllib3
 
-from ..inventory import Component, InventoryResult, SensorReading, SystemInfo
+from ..inventory import (
+    Component,
+    InventoryResult,
+    ManagerInfo,
+    SensorReading,
+    SystemInfo,
+)
 from .base import BaseDriver, BMCError
 
 logger = logging.getLogger("netbox_bmc.redfish")
@@ -485,6 +491,56 @@ class RedfishDriver(BaseDriver):
             )
         if r.status_code not in (200, 202, 204):
             raise BMCError(f"Power action failed: HTTP {r.status_code} {r.text[:200]}")
+
+    # --- BMC自身の情報 -------------------------------------------------------
+    def get_manager_info(self) -> ManagerInfo:
+        """Managers/{id} リソース自体から BMC のファームウェア/ヘルスを取得。"""
+        root = self._get("/redfish/v1")
+        managers = self._collection(root, "Managers")
+        if not managers:
+            raise BMCError("No Manager resource found")
+        mgr = managers[0]
+        return ManagerInfo(
+            firmware_version=mgr.get("FirmwareVersion") or "",
+            health=(mgr.get("Status") or {}).get("Health") or "",
+            model=mgr.get("Model") or "",
+            name=mgr.get("Name") or "",
+        )
+
+    def set_identify(self, on: bool) -> None:
+        """Chassis.LocationIndicatorActive を PATCH して Identify LED を切り替える。
+
+        旧スキーマの実装 (IndicatorLED 文字列 enum) しか持たない BMC 向けに
+        PATCH が拒否された場合はそちらへフォールバックする。
+        """
+        root = self._get("/redfish/v1")
+        systems = self._collection(root, "Systems")
+        if not systems:
+            raise BMCError("No ComputerSystem found")
+        chassis_refs = systems[0].get("Links", {}).get("Chassis", [])[:1]
+        chassis_ref = chassis_refs[0].get("@odata.id") if chassis_refs else None
+        if not chassis_ref:
+            raise BMCError("No Chassis resource found")
+
+        with self._suppress_ssl_warnings():
+            r = self.session.patch(
+                self._url(chassis_ref),
+                json={"LocationIndicatorActive": on},
+                timeout=self.timeout,
+            )
+        if r.status_code in (200, 202, 204):
+            return
+
+        with self._suppress_ssl_warnings():
+            r2 = self.session.patch(
+                self._url(chassis_ref),
+                json={"IndicatorLED": "Lit" if on else "Off"},
+                timeout=self.timeout,
+            )
+        if r2.status_code not in (200, 202, 204):
+            raise BMCError(
+                f"Identify LED action failed: HTTP {r.status_code} {r.text[:200]}"
+            )
 
     # --- センサーテレメトリ ---------------------------------------------------
     def get_sensors(self) -> list[SensorReading]:
