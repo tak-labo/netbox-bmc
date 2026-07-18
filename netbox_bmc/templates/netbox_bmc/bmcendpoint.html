@@ -1,22 +1,23 @@
 {% extends "generic/object.html" %}
 {% load helpers %}
+{% load i18n %}
 
 {% block extra_controls %}
   {% if object.dns_name %}
   <div class="btn-group ms-1" role="group">
     <a href="{{ object.web_gui_url }}" target="_blank" rel="noopener noreferrer"
        class="btn btn-secondary btn-sm">
-      <i class="mdi mdi-web"></i> Web GUI (IP)
+      <i class="mdi mdi-web"></i> {% trans "Web GUI (IP)" %}
     </a>
     <a href="{{ object.web_gui_url_dns }}" target="_blank" rel="noopener noreferrer"
        class="btn btn-secondary btn-sm">
-      <i class="mdi mdi-web"></i> Web GUI (DNS)
+      <i class="mdi mdi-web"></i> {% trans "Web GUI (DNS)" %}
     </a>
   </div>
   {% else %}
   <a href="{{ object.web_gui_url }}" target="_blank" rel="noopener noreferrer"
      class="btn btn-secondary ms-1">
-    <i class="mdi mdi-web"></i> Web GUI
+    <i class="mdi mdi-web"></i> {% trans "Web GUI" %}
   </a>
   {% endif %}
 
@@ -25,7 +26,7 @@
         class="d-inline">
     {% csrf_token %}
     <button type="submit" class="btn btn-primary">
-      <i class="mdi mdi-chip"></i> Build Modules
+      <i class="mdi mdi-chip"></i> {% trans "Build Modules" %}
     </button>
   </form>
 
@@ -33,35 +34,35 @@
   <div class="btn-group ms-1" role="group">
     <form method="post" action="{% url power_url pk=object.pk %}" class="d-inline">
       {% csrf_token %}<input type="hidden" name="action" value="on">
-      <button type="submit" class="btn btn-success btn-sm text-white" title="Power On">
-        <i class="mdi mdi-power"></i> On
+      <button type="submit" class="btn btn-success btn-sm text-white" title="{% trans 'Power On' %}">
+        <i class="mdi mdi-power"></i> {% trans "On" %}
       </button>
     </form>
     <form method="post" action="{% url power_url pk=object.pk %}" class="d-inline">
       {% csrf_token %}<input type="hidden" name="action" value="off">
-      <button type="submit" class="btn btn-danger btn-sm" title="Power Off (Hard)"
-              onclick="return confirm('Hard power off?')">
-        <i class="mdi mdi-power-off"></i> Off
+      <button type="submit" class="btn btn-danger btn-sm" title="{% trans 'Power Off (Hard)' %}"
+              onclick="return confirm('{% trans 'Hard power off?' %}')">
+        <i class="mdi mdi-power-off"></i> {% trans "Off" %}
       </button>
     </form>
     <form method="post" action="{% url power_url pk=object.pk %}" class="d-inline">
       {% csrf_token %}<input type="hidden" name="action" value="soft">
-      <button type="submit" class="btn btn-outline-warning btn-sm" title="Soft Off (ACPI)">
-        <i class="mdi mdi-power-sleep"></i> Soft
+      <button type="submit" class="btn btn-outline-warning btn-sm" title="{% trans 'Soft Off (ACPI)' %}">
+        <i class="mdi mdi-power-sleep"></i> {% trans "Soft" %}
       </button>
     </form>
     <form method="post" action="{% url power_url pk=object.pk %}" class="d-inline">
       {% csrf_token %}<input type="hidden" name="action" value="cycle">
-      <button type="submit" class="btn btn-outline-secondary btn-sm" title="Power Cycle"
-              onclick="return confirm('Power cycle?')">
-        <i class="mdi mdi-restart"></i> Cycle
+      <button type="submit" class="btn btn-outline-secondary btn-sm" title="{% trans 'Power Cycle' %}"
+              onclick="return confirm('{% trans 'Power cycle?' %}')">
+        <i class="mdi mdi-restart"></i> {% trans "Cycle" %}
       </button>
     </form>
     <form method="post" action="{% url power_url pk=object.pk %}" class="d-inline">
       {% csrf_token %}<input type="hidden" name="action" value="reset">
-      <button type="submit" class="btn btn-outline-secondary btn-sm" title="Reset"
-              onclick="return confirm('Reset?')">
-        <i class="mdi mdi-reload"></i> Reset
+      <button type="submit" class="btn btn-outline-secondary btn-sm" title="{% trans 'Reset' %}"
+              onclick="return confirm('{% trans 'Reset?' %}')">
+        <i class="mdi mdi-reload"></i> {% trans "Reset" %}
       </button>
     </form>
   </div>
@@ -69,7 +70,7 @@
 
   <a href="{% url 'plugins:netbox_bmc:bmcendpoint_raw' pk=object.pk %}?depth=3"
      target="_blank" class="btn btn-outline-secondary ms-1">
-    <i class="mdi mdi-code-json"></i> Raw Data
+    <i class="mdi mdi-code-json"></i> {% trans "Raw Data" %}
   </a>
 {% endblock %}
 
@@ -77,21 +78,21 @@
 <div class="row">
   <div class="col col-md-6">
     <div class="card">
-      <h5 class="card-header">BMC Endpoint</h5>
+      <h5 class="card-header">{% trans "BMC Endpoint" %}</h5>
       <table class="table table-hover attr-table">
-        <tr><th scope="row">Device</th>
+        <tr><th scope="row">{% trans "Device" %}</th>
             <td>{{ object.device|linkify }}</td></tr>
-        <tr><th scope="row">IP Address</th>
+        <tr><th scope="row">{% trans "IP Address" %}</th>
             <td>{{ object.ip_address|linkify }}{% if object.port %}:{{ object.port }}{% endif %}</td></tr>
-        <tr><th scope="row">Protocol</th>
+        <tr><th scope="row">{% trans "Protocol" %}</th>
             <td>{{ object.get_protocol_display }}</td></tr>
-        <tr><th scope="row">Verify SSL</th>
+        <tr><th scope="row">{% trans "Verify SSL" %}</th>
             <td>{% checkmark object.verify_ssl %}</td></tr>
       </table>
     </div>
 
     <div class="card mt-3">
-      <h5 class="card-header">Credentials</h5>
+      <h5 class="card-header">{% trans "Credentials" %}</h5>
       <table class="table table-hover attr-table">
         {% if secrets_available %}
           <tr>
@@ -99,18 +100,19 @@
             <td>
               {% if secret_found %}
                 <span class="badge bg-success">
-                  <i class="mdi mdi-lock-check"></i> Secret found (bmc-credentials role)
+                  <i class="mdi mdi-lock-check"></i> {% trans "Secret found (bmc-credentials role)" %}
                 </span>
               {% else %}
                 <span class="badge bg-warning text-dark">
-                  <i class="mdi mdi-lock-alert"></i> No secret found for this device
+                  <i class="mdi mdi-lock-alert"></i> {% trans "No secret found for this device" %}
                 </span>
                 <div class="text-muted small mt-1">
-                  Add a Secret with role <code>bmc-credentials</code> assigned to
-                  <strong>{{ object.device }}</strong>.<br>
-                  Set <em>Name</em> = BMC username, <em>Plaintext</em> = BMC password.
+                  {% trans "Add a Secret with role" %} <code>bmc-credentials</code>
+                  {% trans "assigned to" %} <strong>{{ object.device }}</strong>.<br>
+                  {% trans "Set" %} <em>Name</em> = {% trans "BMC username" %},
+                  <em>Plaintext</em> = {% trans "BMC password" %}.
                   {% if object.username %}
-                    Falling back to plaintext fields.
+                    {% trans "Falling back to plaintext fields." %}
                   {% endif %}
                 </div>
               {% endif %}
@@ -120,15 +122,15 @@
           <tr>
             <td colspan="2">
               <span class="badge bg-secondary">netbox-secrets not installed</span>
-              — credentials stored in plaintext fields below.
+              — {% trans "credentials stored in plaintext fields below." %}
             </td>
           </tr>
         {% endif %}
         {% if object.username %}
-          <tr><th scope="row">Username (fallback)</th>
+          <tr><th scope="row">{% trans "Username (fallback)" %}</th>
               <td><code>{{ object.username }}</code></td></tr>
-          <tr><th scope="row">Password (fallback)</th>
-              <td><em class="text-muted">stored (plaintext)</em></td></tr>
+          <tr><th scope="row">{% trans "Password (fallback)" %}</th>
+              <td><em class="text-muted">{% trans "stored (plaintext)" %}</em></td></tr>
         {% endif %}
       </table>
     </div>
@@ -136,24 +138,24 @@
 
   <div class="col col-md-6">
     <div class="card">
-      <h5 class="card-header">Sync Status</h5>
+      <h5 class="card-header">{% trans "Sync Status" %}</h5>
       <table class="table table-hover attr-table">
-        <tr><th scope="row">Detected Vendor</th>
+        <tr><th scope="row">{% trans "Detected Vendor" %}</th>
             <td>{{ object.detected_vendor|placeholder }}</td></tr>
-        <tr><th scope="row">Detected Protocol</th>
+        <tr><th scope="row">{% trans "Detected Protocol" %}</th>
             <td>{{ object.detected_protocol|placeholder }}</td></tr>
         {% if "Dell" in object.detected_vendor %}
-        <tr><th scope="row">Detected Service Tag</th>
+        <tr><th scope="row">{% trans "Detected Service Tag" %}</th>
             <td>{{ object.detected_serial|placeholder }}</td></tr>
         {% else %}
-        <tr><th scope="row">Detected Serial</th>
+        <tr><th scope="row">{% trans "Detected Serial" %}</th>
             <td>{{ object.detected_serial|placeholder }}</td></tr>
         {% endif %}
-        <tr><th scope="row">Power</th>
+        <tr><th scope="row">{% trans "Power" %}</th>
             <td><span id="power-status-text">…</span></td></tr>
-        <tr><th scope="row">Last Sync</th>
+        <tr><th scope="row">{% trans "Last Sync" %}</th>
             <td>{{ object.last_sync|placeholder }}</td></tr>
-        <tr><th scope="row">Status</th>
+        <tr><th scope="row">{% trans "Status" %}</th>
             <td>{{ object.last_sync_status|placeholder }}</td></tr>
       </table>
     </div>
@@ -167,13 +169,18 @@
 (function () {
   const url = "{% url 'plugins:netbox_bmc:bmcendpoint_power_status' pk=object.pk %}";
   const text = document.getElementById("power-status-text");
+  const i18n = {
+    error: "{% trans 'error' %}",
+    unknown: "{% trans 'unknown' %}",
+    unreachable: "{% trans 'unreachable' %}",
+  };
 
   fetch(url)
     .then(r => r.json())
     .then(data => {
-      text.textContent = data.error ? "error" : (data.state || "unknown").toLowerCase();
+      text.textContent = data.error ? i18n.error : (data.state ? data.state.toLowerCase() : i18n.unknown);
     })
-    .catch(() => { text.textContent = "unreachable"; });
+    .catch(() => { text.textContent = i18n.unreachable; });
 })();
 </script>
 {% endblock %}

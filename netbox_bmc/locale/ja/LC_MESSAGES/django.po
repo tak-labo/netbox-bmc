@@ -1,0 +1,329 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: netbox-bmc\n"
+"POT-Creation-Date: 2026-07-18\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: ja\n"
+
+msgid "Auto-detect"
+msgstr "自動検出"
+
+msgid "Redfish"
+msgstr "Redfish"
+
+msgid "WS-MAN (Intel AMT)"
+msgstr "WS-MAN (Intel AMT)"
+
+msgid "IPMI"
+msgstr "IPMI"
+
+msgid "BMC management IP assigned to the Device"
+msgstr "Device に割り当てられた BMC 管理 IP"
+
+msgid "Fallback when netbox-secrets is not available"
+msgstr "netbox-secrets が利用できない場合のフォールバック"
+
+msgid "Fallback when netbox-secrets is not available (plaintext)"
+msgstr "netbox-secrets が利用できない場合のフォールバック(平文)"
+
+msgid "Device Role (filter)"
+msgstr "Device Role(絞り込み)"
+
+msgid "Filter the Device choices by Role"
+msgstr "Device の候補を Role で絞り込む"
+
+msgid "IP Address"
+msgstr "IPアドレス"
+
+msgid "Select the BMC management IP assigned to the Device"
+msgstr "Device に割り当てられた BMC 管理 IP を選択"
+
+msgid "Device"
+msgstr "デバイス"
+
+msgid "Connection"
+msgstr "接続"
+
+msgid "Other"
+msgstr "その他"
+
+msgid "Vendor"
+msgstr "ベンダー"
+
+msgid "Last Sync Status"
+msgstr "最終同期ステータス"
+
+msgid "Power"
+msgstr "電源"
+
+msgid "Permission denied."
+msgstr "権限がありません。"
+
+msgid "BMC scan failed: %(error)s"
+msgstr "BMCスキャンに失敗しました: %(error)s"
+
+msgid "No scan data found. Please run a scan first."
+msgstr "スキャンデータが見つかりません。先にスキャンを実行してください。"
+
+msgid "Session expired. Please run a scan again."
+msgstr "セッションが期限切れです。もう一度スキャンを実行してください。"
+
+msgid "CPU"
+msgstr "CPU"
+
+msgid "Memory"
+msgstr "メモリ"
+
+msgid "Drive"
+msgstr "ドライブ"
+
+msgid "PSU"
+msgstr "PSU"
+
+msgid "Fan"
+msgstr "ファン"
+
+msgid "PCI"
+msgstr "PCI"
+
+msgid "Firmware"
+msgstr "ファームウェア"
+
+msgid "Modules applied: %(summary)s (firmware entries updated: %(count)s)"
+msgstr "モジュールを適用しました: %(summary)s(ファームウェア項目更新: %(count)s件)"
+
+msgid "Modules applied: %(summary)s"
+msgstr "モジュールを適用しました: %(summary)s"
+
+msgid "Unknown power action: %(action)s"
+msgstr "不明な電源操作です: %(action)s"
+
+msgid "Power action failed: %(error)s"
+msgstr "電源操作に失敗しました: %(error)s"
+
+msgid "Power action '%(action)s' sent successfully."
+msgstr "電源操作 '%(action)s' を送信しました。"
+
+msgid "fetch_raw not supported for this protocol"
+msgstr "このプロトコルでは fetch_raw はサポートされていません"
+
+msgid "Please select a Device first."
+msgstr "先に Device を選択してください。"
+
+msgid "The specified Device was not found."
+msgstr "指定された Device が見つかりません。"
+
+msgid "Please select an IP Address."
+msgstr "IP Address を選択してください。"
+
+msgid "The specified IP Address was not found."
+msgstr "指定された IP Address が見つかりません。"
+
+msgid "Port must be a number."
+msgstr "Port は数値で指定してください。"
+
+msgid "Connected (%(details)s)"
+msgstr "接続成功 (%(details)s)"
+
+msgid "Web GUI (IP)"
+msgstr "Web GUI (IP)"
+
+msgid "Web GUI (DNS)"
+msgstr "Web GUI (DNS)"
+
+msgid "Web GUI"
+msgstr "Web GUI"
+
+msgid "Build Modules"
+msgstr "モジュールを構築"
+
+msgid "Power On"
+msgstr "電源オン"
+
+msgid "On"
+msgstr "オン"
+
+msgid "Power Off (Hard)"
+msgstr "電源オフ(強制)"
+
+msgid "Hard power off?"
+msgstr "強制的に電源をオフにしますか?"
+
+msgid "Off"
+msgstr "オフ"
+
+msgid "Soft Off (ACPI)"
+msgstr "ソフトオフ (ACPI)"
+
+msgid "Soft"
+msgstr "ソフト"
+
+msgid "Power Cycle"
+msgstr "電源サイクル"
+
+msgid "Power cycle?"
+msgstr "電源をサイクルしますか?"
+
+msgid "Cycle"
+msgstr "サイクル"
+
+msgid "Reset"
+msgstr "リセット"
+
+msgid "Reset?"
+msgstr "リセットしますか?"
+
+msgid "Raw Data"
+msgstr "Raw データ"
+
+msgid "BMC Endpoint"
+msgstr "BMCエンドポイント"
+
+msgid "Protocol"
+msgstr "プロトコル"
+
+msgid "Verify SSL"
+msgstr "SSL検証"
+
+msgid "Credentials"
+msgstr "認証情報"
+
+msgid "Secret found (bmc-credentials role)"
+msgstr "シークレットが見つかりました (bmc-credentials ロール)"
+
+msgid "No secret found for this device"
+msgstr "このデバイス用のシークレットが見つかりません"
+
+msgid "Add a Secret with role"
+msgstr "ロール"
+
+msgid "assigned to"
+msgstr "を持つシークレットを作成し、割り当て先デバイス:"
+
+msgid "Set"
+msgstr "設定"
+
+msgid "BMC username"
+msgstr "BMC ユーザー名"
+
+msgid "BMC password"
+msgstr "BMC パスワード"
+
+msgid "Falling back to plaintext fields."
+msgstr "平文フィールドにフォールバックしています。"
+
+msgid "credentials stored in plaintext fields below."
+msgstr "認証情報は下記の平文フィールドに保存されています。"
+
+msgid "Username (fallback)"
+msgstr "ユーザー名(フォールバック)"
+
+msgid "Password (fallback)"
+msgstr "パスワード(フォールバック)"
+
+msgid "stored (plaintext)"
+msgstr "保存済み(平文)"
+
+msgid "Sync Status"
+msgstr "同期ステータス"
+
+msgid "Detected Vendor"
+msgstr "検出されたベンダー"
+
+msgid "Detected Protocol"
+msgstr "検出されたプロトコル"
+
+msgid "Detected Service Tag"
+msgstr "検出されたサービスタグ"
+
+msgid "Detected Serial"
+msgstr "検出されたシリアル"
+
+msgid "Last Sync"
+msgstr "最終同期"
+
+msgid "Status"
+msgstr "ステータス"
+
+msgid "error"
+msgstr "エラー"
+
+msgid "unknown"
+msgstr "不明"
+
+msgid "unreachable"
+msgstr "到達不能"
+
+msgid "Address"
+msgstr "アドレス"
+
+msgid "View BMC Endpoint"
+msgstr "BMCエンドポイントを表示"
+
+msgid "No BMC endpoint configured."
+msgstr "BMCエンドポイントが設定されていません。"
+
+msgid "Add BMC Endpoint"
+msgstr "BMCエンドポイントを追加"
+
+msgid "Rescan"
+msgstr "再スキャン"
+
+msgid "Module Preview"
+msgstr "モジュールプレビュー"
+
+msgid "Type filter:"
+msgstr "種別フィルター:"
+
+msgid "Module Bay"
+msgstr "モジュールベイ"
+
+msgid "Kind"
+msgstr "種別"
+
+msgid "Redfish Slot / Path"
+msgstr "Redfish スロット / パス"
+
+msgid "Serial"
+msgstr "シリアル"
+
+msgid "Part"
+msgstr "部品番号"
+
+msgid "New"
+msgstr "新規"
+
+msgid "Updated"
+msgstr "更新済み"
+
+msgid "Removed"
+msgstr "削除済み"
+
+msgid "Unchanged"
+msgstr "変更なし"
+
+msgid "ModuleBay will be auto-created"
+msgstr "ModuleBay は自動作成されます"
+
+msgid "New Bay"
+msgstr "新規ベイ"
+
+msgid "No components detected."
+msgstr "コンポーネントが検出されませんでした。"
+
+msgid "Cancel"
+msgstr "キャンセル"
+
+msgid "Apply Selected"
+msgstr "選択項目を適用"
+
+msgid "Test Connection"
+msgstr "接続テスト"
+
+msgid "Testing..."
+msgstr "テスト中..."
+
+msgid "Request failed."
+msgstr "リクエストに失敗しました。"

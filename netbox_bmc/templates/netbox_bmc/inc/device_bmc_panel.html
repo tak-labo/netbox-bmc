@@ -1,28 +1,29 @@
 {% load helpers %}
+{% load i18n %}
 <div class="card">
   <h5 class="card-header">BMC</h5>
   <div class="card-body">
     {% if bmc_endpoint %}
       <table class="table table-hover attr-table">
-        <tr><th scope="row">Address</th>
+        <tr><th scope="row">{% trans "Address" %}</th>
             <td>{{ bmc_endpoint.ip_address.address.ip }}{% if bmc_endpoint.port %}:{{ bmc_endpoint.port }}{% endif %}</td></tr>
-        <tr><th scope="row">Protocol</th>
+        <tr><th scope="row">{% trans "Protocol" %}</th>
             <td>{{ bmc_endpoint.get_protocol_display }}</td></tr>
-        <tr><th scope="row">Last Sync</th>
+        <tr><th scope="row">{% trans "Last Sync" %}</th>
             <td>{{ bmc_endpoint.last_sync|placeholder }}</td></tr>
-        <tr><th scope="row">Status</th>
+        <tr><th scope="row">{% trans "Status" %}</th>
             <td>{{ bmc_endpoint.last_sync_status|placeholder }}</td></tr>
       </table>
       <div class="mt-2">
         <a href="{{ bmc_endpoint.get_absolute_url }}" class="btn btn-sm btn-outline-primary">
-          <i class="mdi mdi-chip"></i> View BMC Endpoint
+          <i class="mdi mdi-chip"></i> {% trans "View BMC Endpoint" %}
         </a>
       </div>
     {% else %}
-      <p class="text-muted mb-2">No BMC endpoint configured.</p>
+      <p class="text-muted mb-2">{% trans "No BMC endpoint configured." %}</p>
       <a href="{% url 'plugins:netbox_bmc:bmcendpoint_add' %}?device={{ object.pk }}"
          class="btn btn-sm btn-primary">
-        <i class="mdi mdi-plus-thick"></i> Add BMC Endpoint
+        <i class="mdi mdi-plus-thick"></i> {% trans "Add BMC Endpoint" %}
       </a>
     {% endif %}
   </div>
