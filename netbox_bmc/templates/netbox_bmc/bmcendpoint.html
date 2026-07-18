@@ -2,43 +2,44 @@
 {% load helpers %}
 {% load i18n %}
 
-{% block extra_controls %}
-  {% if object.dns_name %}
-  <div class="btn-group ms-1" role="group">
-    <a href="{{ object.web_gui_url }}" target="_blank" rel="noopener noreferrer"
-       class="btn btn-secondary btn-sm">
-      <i class="mdi mdi-web"></i> {% trans "Web GUI (IP)" %}
-    </a>
-    <a href="{{ object.web_gui_url_dns }}" target="_blank" rel="noopener noreferrer"
-       class="btn btn-secondary btn-sm">
-      <i class="mdi mdi-web"></i> {% trans "Web GUI (DNS)" %}
-    </a>
-  </div>
-  {% else %}
-  <a href="{{ object.web_gui_url }}" target="_blank" rel="noopener noreferrer"
-     class="btn btn-secondary ms-1">
-    <i class="mdi mdi-web"></i> {% trans "Web GUI" %}
-  </a>
-  {% endif %}
-
-  <form method="post"
-        action="{% url 'plugins:netbox_bmc:bmcendpoint_build_modules' pk=object.pk %}"
-        class="d-inline">
-    {% csrf_token %}
-    <button type="submit" class="btn btn-primary">
-      <i class="mdi mdi-chip"></i> {% trans "Build Modules" %}
-    </button>
-  </form>
-
-  <a href="{% url 'plugins:netbox_bmc:bmcendpoint_raw' pk=object.pk %}?depth=3"
-     target="_blank" class="btn btn-outline-secondary ms-1">
-    <i class="mdi mdi-code-json"></i> {% trans "Raw Data" %}
-  </a>
-{% endblock %}
-
 {% block content %}
 <div class="row">
   <div class="col col-md-6">
+    <div class="card mb-3">
+      <h5 class="card-header">{% trans "Actions" %}</h5>
+      <div class="card-body d-flex flex-wrap gap-2">
+        {% if object.dns_name %}
+          <a href="{{ object.web_gui_url }}" target="_blank" rel="noopener noreferrer"
+             class="btn btn-secondary btn-sm">
+            <i class="mdi mdi-web"></i> {% trans "Web GUI (IP)" %}
+          </a>
+          <a href="{{ object.web_gui_url_dns }}" target="_blank" rel="noopener noreferrer"
+             class="btn btn-secondary btn-sm">
+            <i class="mdi mdi-web"></i> {% trans "Web GUI (DNS)" %}
+          </a>
+        {% else %}
+          <a href="{{ object.web_gui_url }}" target="_blank" rel="noopener noreferrer"
+             class="btn btn-secondary btn-sm">
+            <i class="mdi mdi-web"></i> {% trans "Web GUI" %}
+          </a>
+        {% endif %}
+
+        <form method="post"
+              action="{% url 'plugins:netbox_bmc:bmcendpoint_build_modules' pk=object.pk %}"
+              class="d-inline">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-primary btn-sm">
+            <i class="mdi mdi-chip"></i> {% trans "Build Modules" %}
+          </button>
+        </form>
+
+        <a href="{% url 'plugins:netbox_bmc:bmcendpoint_raw' pk=object.pk %}?depth=3"
+           target="_blank" class="btn btn-outline-secondary btn-sm">
+          <i class="mdi mdi-code-json"></i> {% trans "Raw Data" %}
+        </a>
+      </div>
+    </div>
+
     <div class="card">
       <h5 class="card-header">{% trans "BMC Endpoint" %}</h5>
       <table class="table table-hover attr-table">

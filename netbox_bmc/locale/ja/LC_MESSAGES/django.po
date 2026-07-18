@@ -178,6 +178,9 @@ msgstr "リセットしますか?"
 msgid "Raw Data"
 msgstr "Raw データ"
 
+msgid "Actions"
+msgstr "操作"
+
 msgid "BMC Endpoint"
 msgstr "BMCエンドポイント"
 
