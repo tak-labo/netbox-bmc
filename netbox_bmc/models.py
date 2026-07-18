@@ -66,18 +66,6 @@ class BMCEndpoint(JobsMixin, NetBoxModel):
             host = str(self.ip_address.address.ip)
         return f"{host}:{self.port}" if self.port else host
 
-    def _console_path(self):
-        vendor = self.detected_vendor.lower()
-        if "dell" in vendor or "idrac" in vendor:
-            return "/console"
-        if "hp" in vendor or "ilo" in vendor:
-            return "/ui/"
-        if "lenovo" in vendor or "xcc" in vendor:
-            return "/bmc/viewer"
-        if "supermicro" in vendor:
-            return "/html5.html"
-        return "/"
-
     @property
     def dns_name(self):
         return self.ip_address.dns_name or ""
@@ -89,14 +77,6 @@ class BMCEndpoint(JobsMixin, NetBoxModel):
     @property
     def web_gui_url_dns(self):
         return f"https://{self._bmc_host(use_dns=True)}/" if self.ip_address.dns_name else None
-
-    @property
-    def console_url(self):
-        return f"https://{self._bmc_host()}{self._console_path()}"
-
-    @property
-    def console_url_dns(self):
-        return f"https://{self._bmc_host(use_dns=True)}{self._console_path()}" if self.ip_address.dns_name else None
 
     def get_driver(self, request=None):
         """

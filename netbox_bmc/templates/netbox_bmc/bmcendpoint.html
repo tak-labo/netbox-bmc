@@ -13,24 +13,10 @@
       <i class="mdi mdi-web"></i> Web GUI (DNS)
     </a>
   </div>
-  <div class="btn-group ms-1" role="group">
-    <a href="{{ object.console_url }}" target="_blank" rel="noopener noreferrer"
-       class="btn btn-outline-secondary btn-sm">
-      <i class="mdi mdi-monitor"></i> Console (IP)
-    </a>
-    <a href="{{ object.console_url_dns }}" target="_blank" rel="noopener noreferrer"
-       class="btn btn-outline-secondary btn-sm">
-      <i class="mdi mdi-monitor"></i> Console (DNS)
-    </a>
-  </div>
   {% else %}
   <a href="{{ object.web_gui_url }}" target="_blank" rel="noopener noreferrer"
      class="btn btn-secondary ms-1">
     <i class="mdi mdi-web"></i> Web GUI
-  </a>
-  <a href="{{ object.console_url }}" target="_blank" rel="noopener noreferrer"
-     class="btn btn-outline-secondary ms-1">
-    <i class="mdi mdi-monitor"></i> Open Console
   </a>
   {% endif %}
 
