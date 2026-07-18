@@ -2,14 +2,20 @@
 netbox-secrets からBMC認証情報を取得するヘルパー。
 
 【復号の経路】
-  バックグラウンドジョブ (InventorySyncJob / ScheduledInventorySyncJob):
-    request なし → PLUGINS_CONFIG の service_private_key_path に
-    置いたサービスアカウントの RSA 秘密鍵 (PEM) で UserKey を復号し
-    master_key を取得する。
+  UI からの操作 (BuildModulesView / PowerActionView / IdentifyActionView /
+  PowerStatusView / FetchRawView / ConnectivityTestView など、endpoint.get_driver(request=request)
+  を呼ぶすべてのビュー):
+    netbox-secrets の SessionKey モデル経由でセッションキーを復号し master_key を取得する。
+    セッションキー自体は netbox_secrets.utils.get_session_key() で Cookie
+    ("netbox_secrets_sessionid") / X-Session-Key ヘッダ / POST の session_key から取得する。
+    UserKey.get_master_key() は RSA 秘密鍵専用のメソッドで、セッションキー(対称鍵)を
+    渡すと必ず失敗するため使わないこと。
 
-  request 引数経路は将来的な REST API 同期実行用に残してあるが、
-  ジョブ kwargs を介してセッションキーを渡すと Job レコードに平文で
-  保存されてしまうため、現状の UI トリガーでは使用しない。
+  バックグラウンドジョブ (request なし。NetworkSyncJob 等の各 *SyncJob):
+    PLUGINS_CONFIG の service_private_key_path に置いたサービスアカウントの
+    RSA 秘密鍵 (PEM) で UserKey.get_master_key() を復号し master_key を取得する。
+    ジョブ kwargs を介してセッションキーを渡すと Job レコードに平文で保存されて
+    しまうため、この経路ではセッションキーを使わない。
 
 【Secretのレイアウト規約】
   - SecretRole slug : bmc-credentials
@@ -23,7 +29,6 @@ netbox-secrets からBMC認証情報を取得するヘルパー。
 """
 from __future__ import annotations
 
-import base64
 import logging
 from dataclasses import dataclass
 from pathlib import Path
@@ -145,26 +150,28 @@ def _resolve_master_key(request: HttpRequest | None) -> bytes:
 
 
 def _master_key_from_request(request) -> bytes:
-    from netbox_secrets.models import UserKey
+    """
+    リクエストに乗ってきた netbox-secrets のセッションキーで master_key を復号する。
 
-    # X-Session-Key ヘッダ (API) or session_key Cookie (ブラウザ)
-    session_key_b64 = (
-        request.META.get("HTTP_X_SESSION_KEY")
-        or request.COOKIES.get("session_key")
-    )
-    if not session_key_b64:
-        raise Exception("No X-Session-Key header or session_key cookie in request")
+    セッションキー自体の抽出は netbox-secrets 本体の get_session_key() に委譲する
+    (Cookie 名 "netbox_secrets_sessionid" / X-Session-Key ヘッダ / POST の session_key
+    を内部で順に見る)。復号は UserKey ではなく SessionKey モデル経由で行う必要がある —
+    UserKey.get_master_key() は RSA 秘密鍵専用で、セッションキー(対称鍵)を渡すと
+    RSA.importKey() が失敗して常に例外になる。
+    """
+    from netbox_secrets.models import SessionKey
+    from netbox_secrets.utils import get_session_key
 
-    session_key = base64.b64decode(session_key_b64)
+    session_key = get_session_key(request)
+    if session_key is None:
+        raise Exception("No netbox-secrets session key found in request")
+
     try:
-        uk = UserKey.objects.get(user=request.user)
-    except UserKey.DoesNotExist as e:
-        raise Exception(f"No UserKey found for user {request.user}") from e
+        sk = SessionKey.objects.get(userkey__user=request.user)
+    except SessionKey.DoesNotExist as e:
+        raise Exception(f"No SessionKey found for user {request.user}") from e
 
-    master_key = uk.get_master_key(session_key)
-    if master_key is None:
-        raise Exception("get_master_key returned None — session key may be expired")
-    return master_key
+    return sk.get_master_key(session_key)
 
 
 def _master_key_from_service_account() -> bytes:
