@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+## [0.4.25] - 2026-07-18
+
+- fix(forms): make `password` optional on the BMC Endpoint add/edit form — it was forced
+  `required=True`, ignoring the model field's `blank=True`, so users relying entirely on
+  netbox-secrets had to type something into an unused field just to pass validation (#55)
+- fix(docs): fix Mermaid `erDiagram` syntax in `docs/DESIGN.md` (attribute key must come after
+  the type/name, not before) so the BMCEndpoint data model diagram renders on GitHub (#54)
+
 ## [0.4.24] - 2026-07-18
 
 - Network/Sensors/Event Log/BMC Health are now persisted to the database and refreshed via a
