@@ -4,7 +4,6 @@ from unittest.mock import MagicMock, patch
 from netbox_bmc.drivers.ipmi import IPMIDriver
 from netbox_bmc.drivers.redfish import RedfishDriver
 
-
 # --- Redfish -----------------------------------------------------------
 
 def make_redfish_driver():
@@ -117,8 +116,9 @@ def test_ipmi_event_log_respects_limit():
 
 
 def test_ipmi_event_log_wraps_errors():
-    from netbox_bmc.drivers.base import BMCError
     import pytest
+
+    from netbox_bmc.drivers.base import BMCError
 
     driver = make_ipmi_driver()
     driver.cmd.get_event_log.side_effect = Exception("SDR error")
