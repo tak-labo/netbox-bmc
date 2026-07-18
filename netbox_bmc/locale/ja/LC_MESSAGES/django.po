@@ -331,9 +331,6 @@ msgstr "メッセージ"
 msgid "No event log entries found."
 msgstr "イベントログのエントリが見つかりませんでした。"
 
-msgid "Not supported for this protocol"
-msgstr "このプロトコルではサポートされていません"
-
 msgid "Sync Network"
 msgstr "ネットワーク同期"
 
@@ -351,6 +348,15 @@ msgstr "イベントログ同期"
 
 msgid "Event log sync queued."
 msgstr "イベントログ同期をキューに追加しました。"
+
+msgid "Sync Manager Info"
+msgstr "Manager Info 同期"
+
+msgid "Manager info sync queued."
+msgstr "Manager Info 同期をキューに追加しました。"
+
+msgid "Manager Info Last Sync"
+msgstr "Manager Info 最終同期"
 
 msgid "Yes"
 msgstr "はい"

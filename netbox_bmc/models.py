@@ -65,6 +65,11 @@ class BMCEndpoint(JobsMixin, NetBoxModel):
     event_log = models.JSONField(default=list, blank=True)
     event_log_last_sync = models.DateTimeField(blank=True, null=True)
 
+    # BMC自身のファームウェア/ヘルス情報 (ManagerInfoSyncJob / ScheduledManagerInfoSyncJob が更新)
+    # inventory.ManagerInfo を dataclasses.asdict() でシリアライズして保存
+    manager_info = models.JSONField(default=dict, blank=True)
+    manager_info_last_sync = models.DateTimeField(blank=True, null=True)
+
     class Meta:
         ordering = ("device",)
         verbose_name = "BMC endpoint"

@@ -73,8 +73,8 @@ class BmcNetworkInterface:
 class ManagerInfo:
     """BMC (管理コントローラ) 自身のファームウェア/ヘルス情報。
 
-    get_manager_info() の戻り値。Power Status と同様にページ表示のたびに
-    ライブ取得する (DB には保存しない)。
+    get_manager_info() の戻り値。ManagerInfoSyncJob / ScheduledManagerInfoSyncJob が
+    BMCEndpoint.manager_info に dataclasses.asdict() でシリアライズして保存する。
     """
     firmware_version: str = ""
     health: str = ""

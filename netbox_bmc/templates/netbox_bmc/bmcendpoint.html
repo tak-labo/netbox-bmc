@@ -220,7 +220,15 @@
     </div>
 
     <div class="card">
-      <h5 class="card-header">{% trans "Sync Status" %}</h5>
+      <h5 class="card-header d-flex justify-content-between align-items-center">
+        {% trans "Sync Status" %}
+        <form method="post" action="{% url 'plugins:netbox_bmc:bmcendpoint_manager_info_sync' pk=object.pk %}" class="d-inline">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-outline-secondary btn-sm">
+            <i class="mdi mdi-sync"></i> {% trans "Sync Manager Info" %}
+          </button>
+        </form>
+      </h5>
       <table class="table table-hover attr-table">
         <tr><th scope="row">{% trans "Detected Vendor" %}</th>
             <td>{{ object.detected_vendor|placeholder }}</td></tr>
@@ -236,9 +244,11 @@
         <tr><th scope="row">{% trans "Power" %}</th>
             <td><span id="power-status-text">…</span></td></tr>
         <tr><th scope="row">{% trans "BMC Firmware" %}</th>
-            <td><span id="bmc-manager-firmware">…</span></td></tr>
+            <td>{{ object.manager_info.firmware_version|placeholder }}</td></tr>
         <tr><th scope="row">{% trans "BMC Health" %}</th>
-            <td><span id="bmc-manager-health">…</span></td></tr>
+            <td>{{ object.manager_info.health|placeholder }}</td></tr>
+        <tr><th scope="row">{% trans "Manager Info Last Sync" %}</th>
+            <td>{{ object.manager_info_last_sync|placeholder }}</td></tr>
         <tr><th scope="row">{% trans "Last Sync" %}</th>
             <td>{{ object.last_sync|placeholder }}</td></tr>
         <tr><th scope="row">{% trans "Status" %}</th>
@@ -347,33 +357,6 @@
       text.textContent = data.error ? i18n.error : (data.state ? data.state.toLowerCase() : i18n.unknown);
     })
     .catch(() => { text.textContent = i18n.unreachable; });
-})();
-
-(function () {
-  const url = "{% url 'plugins:netbox_bmc:bmcendpoint_manager_info' pk=object.pk %}";
-  const fwText = document.getElementById("bmc-manager-firmware");
-  const healthText = document.getElementById("bmc-manager-health");
-  const i18n = {
-    error: "{% trans 'error' %}",
-    unreachable: "{% trans 'unreachable' %}",
-  };
-  const placeholder = "—";
-
-  fetch(url)
-    .then((r) => r.json())
-    .then((data) => {
-      if (data.error) {
-        fwText.textContent = data.error;
-        healthText.textContent = data.error;
-        return;
-      }
-      fwText.textContent = data.firmware_version || placeholder;
-      healthText.textContent = data.health || placeholder;
-    })
-    .catch(() => {
-      fwText.textContent = i18n.unreachable;
-      healthText.textContent = i18n.unreachable;
-    });
 })();
 
 </script>

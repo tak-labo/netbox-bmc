@@ -1,6 +1,4 @@
 
-from dataclasses import asdict
-
 from dcim.models import Device
 from django.contrib import messages
 from django.http import JsonResponse
@@ -296,25 +294,23 @@ class NetworkSyncActionView(View):
         return redirect(endpoint.get_absolute_url())
 
 
-class ManagerInfoView(View):
-    """GET: BMC 自身のファームウェア/ヘルスを JSON で返す (ライブ取得、DB保存なし)。"""
+class ManagerInfoSyncActionView(View):
+    """POST: BMC ファームウェア/ヘルス同期ジョブ (ManagerInfoSyncJob) をキューに入れる。
 
-    def get(self, request, pk):
+    Sync Status カード内の BMC Firmware / BMC Health は DB
+    (manager_info / manager_info_last_sync) を表示するだけでライブ取得はしない。
+    """
+
+    def post(self, request, pk):
         endpoint = get_object_or_404(BMCEndpoint, pk=pk)
-        if not request.user.has_perm("netbox_bmc.view_bmcendpoint"):
-            return JsonResponse({"error": _("Permission denied.")}, status=403)
+        if not request.user.has_perm("netbox_bmc.change_bmcendpoint"):
+            messages.error(request, _("Permission denied."))
+            return redirect(endpoint.get_absolute_url())
 
-        try:
-            with endpoint.get_driver(request=request) as driver:
-                info = driver.get_manager_info()
-        except NotImplementedError:
-            return JsonResponse(
-                {"error": _("Not supported for this protocol")}, status=501,
-            )
-        except Exception as e:
-            return JsonResponse({"error": str(e)}, status=500)
-
-        return JsonResponse(asdict(info))
+        from .jobs import ManagerInfoSyncJob
+        ManagerInfoSyncJob.enqueue(instance=endpoint, user=request.user)
+        messages.success(request, _("Manager info sync queued."))
+        return redirect(endpoint.get_absolute_url())
 
 
 class SensorsSyncActionView(View):
