@@ -241,6 +241,15 @@ msgstr "パスワード(フォールバック)"
 msgid "stored (plaintext)"
 msgstr "保存済み(平文)"
 
+msgid "BMC Firmware"
+msgstr "BMCファームウェア"
+
+msgid "BMC Health"
+msgstr "BMCヘルス"
+
+msgid "Not supported for this protocol"
+msgstr "このプロトコルではサポートされていません"
+
 msgid "Sync Status"
 msgstr "同期ステータス"
 

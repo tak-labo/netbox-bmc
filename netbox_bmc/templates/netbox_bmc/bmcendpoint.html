@@ -170,6 +170,10 @@
         {% endif %}
         <tr><th scope="row">{% trans "Power" %}</th>
             <td><span id="power-status-text">…</span></td></tr>
+        <tr><th scope="row">{% trans "BMC Firmware" %}</th>
+            <td><span id="bmc-manager-firmware">…</span></td></tr>
+        <tr><th scope="row">{% trans "BMC Health" %}</th>
+            <td><span id="bmc-manager-health">…</span></td></tr>
         <tr><th scope="row">{% trans "Last Sync" %}</th>
             <td>{{ object.last_sync|placeholder }}</td></tr>
         <tr><th scope="row">{% trans "Status" %}</th>
@@ -198,6 +202,33 @@
       text.textContent = data.error ? i18n.error : (data.state ? data.state.toLowerCase() : i18n.unknown);
     })
     .catch(() => { text.textContent = i18n.unreachable; });
+})();
+
+(function () {
+  const url = "{% url 'plugins:netbox_bmc:bmcendpoint_manager_info' pk=object.pk %}";
+  const fwText = document.getElementById("bmc-manager-firmware");
+  const healthText = document.getElementById("bmc-manager-health");
+  const i18n = {
+    error: "{% trans 'error' %}",
+    unreachable: "{% trans 'unreachable' %}",
+  };
+  const placeholder = "—";
+
+  fetch(url)
+    .then((r) => r.json())
+    .then((data) => {
+      if (data.error) {
+        fwText.textContent = data.error;
+        healthText.textContent = data.error;
+        return;
+      }
+      fwText.textContent = data.firmware_version || placeholder;
+      healthText.textContent = data.health || placeholder;
+    })
+    .catch(() => {
+      fwText.textContent = i18n.unreachable;
+      healthText.textContent = i18n.unreachable;
+    });
 })();
 </script>
 {% endblock %}

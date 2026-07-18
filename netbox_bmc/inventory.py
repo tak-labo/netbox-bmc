@@ -42,3 +42,16 @@ class InventoryResult:
     vendor: str = ""        # 検出したベンダー名 (Dell, HPE, Lenovo, ...)
     protocol: str = ""      # redfish | ipmi
     raw: dict = field(default_factory=dict)  # デバッグ用の生データ(任意)
+
+
+@dataclass
+class ManagerInfo:
+    """BMC (管理コントローラ) 自身のファームウェア/ヘルス情報。
+
+    get_manager_info() の戻り値。Power Status と同様にページ表示のたびに
+    ライブ取得する (DB には保存しない)。
+    """
+    firmware_version: str = ""
+    health: str = ""
+    model: str = ""
+    name: str = ""
