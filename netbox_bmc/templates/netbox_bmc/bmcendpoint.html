@@ -161,6 +161,28 @@
     </div>
   </div>
 </div>
+
+<div class="row mt-3">
+  <div class="col">
+    <div class="card">
+      <h5 class="card-header">{% trans "Event Log" %}</h5>
+      <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>{% trans "Time" %}</th>
+              <th>{% trans "Severity" %}</th>
+              <th>{% trans "Message" %}</th>
+            </tr>
+          </thead>
+          <tbody id="bmc-event-log-body">
+            <tr><td colspan="3" class="text-center text-muted">…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block javascript %}
@@ -181,6 +203,55 @@
       text.textContent = data.error ? i18n.error : (data.state ? data.state.toLowerCase() : i18n.unknown);
     })
     .catch(() => { text.textContent = i18n.unreachable; });
+})();
+
+(function () {
+  const url = "{% url 'plugins:netbox_bmc:bmcendpoint_event_log' pk=object.pk %}";
+  const body = document.getElementById("bmc-event-log-body");
+  const i18n = {
+    error: "{% trans 'error' %}",
+    unreachable: "{% trans 'unreachable' %}",
+    noEntries: "{% trans 'No event log entries found.' %}",
+  };
+
+  function setMessage(text) {
+    body.textContent = "";
+    const tr = document.createElement("tr");
+    const td = document.createElement("td");
+    td.colSpan = 3;
+    td.className = "text-center text-muted";
+    td.textContent = text;
+    tr.appendChild(td);
+    body.appendChild(tr);
+  }
+
+  function cell(text) {
+    const td = document.createElement("td");
+    td.textContent = (text === null || text === undefined || text === "") ? "—" : text;
+    return td;
+  }
+
+  fetch(url)
+    .then((r) => r.json())
+    .then((data) => {
+      if (!Array.isArray(data)) {
+        setMessage(data.error || i18n.error);
+        return;
+      }
+      if (data.length === 0) {
+        setMessage(i18n.noEntries);
+        return;
+      }
+      body.textContent = "";
+      data.forEach((entry) => {
+        const tr = document.createElement("tr");
+        tr.appendChild(cell(entry.created));
+        tr.appendChild(cell(entry.severity));
+        tr.appendChild(cell(entry.message));
+        body.appendChild(tr);
+      });
+    })
+    .catch(() => { setMessage(i18n.unreachable); });
 })();
 </script>
 {% endblock %}

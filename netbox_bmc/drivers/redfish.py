@@ -16,7 +16,7 @@ import logging
 import requests
 import urllib3
 
-from ..inventory import Component, InventoryResult, SystemInfo
+from ..inventory import Component, InventoryResult, SelEntry, SystemInfo
 from .base import BaseDriver, BMCError
 
 logger = logging.getLogger("netbox_bmc.redfish")
@@ -485,6 +485,57 @@ class RedfishDriver(BaseDriver):
             )
         if r.status_code not in (200, 202, 204):
             raise BMCError(f"Power action failed: HTTP {r.status_code} {r.text[:200]}")
+
+    # --- System Event Log ---------------------------------------------------
+    def get_event_log(self, limit: int = 20) -> list[SelEntry]:
+        """Managers/{id}/LogServices/{Log}/Entries から直近 limit 件を取得。
+
+        _collection() をそのまま使うとメンバー1件ごとにHTTP GETが発生し、
+        SELのエントリ数が多い場合に非常に遅くなるため、ここでは Entries
+        コレクションリソースを1回だけ取得し、Members に完全なオブジェクトが
+        インライン展開されている場合はそれをそのまま使う (多くのRedfish実装
+        はこの形式)。参照 (@odata.id) のみの場合は limit 件までに絞って
+        フォールバック取得する。
+        """
+        root = self._get("/redfish/v1")
+        managers = self._collection(root, "Managers")
+        if not managers:
+            raise BMCError("No Manager resource found")
+        mgr = managers[0]
+
+        log_services = self._collection(mgr, "LogServices")
+        if not log_services:
+            return []
+
+        raw_entries: list[dict] = []
+        for log_service in log_services:
+            entries_ref = (log_service.get("Entries") or {}).get("@odata.id")
+            if not entries_ref:
+                continue
+            coll = self._get_optional(entries_ref)
+            if not coll:
+                continue
+            fetched_refs = 0
+            for m in coll.get("Members", []):
+                if "Created" in m or "Message" in m:
+                    raw_entries.append(m)
+                elif m.get("@odata.id") and fetched_refs < limit:
+                    item = self._get_optional(m["@odata.id"])
+                    if item:
+                        raw_entries.append(item)
+                    fetched_refs += 1
+
+        raw_entries.sort(key=lambda e: e.get("Created") or "", reverse=True)
+
+        return [
+            SelEntry(
+                created=e.get("Created") or "",
+                severity=e.get("Severity") or "",
+                message=e.get("Message") or "",
+                sensor_type=e.get("SensorType") or e.get("EntryType") or "",
+            )
+            for e in raw_entries[:limit]
+        ]
 
     # --- ベンダー検出 -------------------------------------------------------
     @staticmethod

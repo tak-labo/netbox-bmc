@@ -226,6 +226,24 @@ msgstr "パスワード(フォールバック)"
 msgid "stored (plaintext)"
 msgstr "保存済み(平文)"
 
+msgid "Event Log"
+msgstr "イベントログ"
+
+msgid "Time"
+msgstr "時刻"
+
+msgid "Severity"
+msgstr "重大度"
+
+msgid "Message"
+msgstr "メッセージ"
+
+msgid "No event log entries found."
+msgstr "イベントログのエントリが見つかりませんでした。"
+
+msgid "Not supported for this protocol"
+msgstr "このプロトコルではサポートされていません"
+
 msgid "Sync Status"
 msgstr "同期ステータス"
 
