@@ -103,7 +103,7 @@
       <h5 class="card-header">{% trans "Power Control" %}</h5>
       <div class="card-body">
         {% with power_url="plugins:netbox_bmc:bmcendpoint_power" %}
-        <div class="btn-group" role="group">
+        <div class="d-flex flex-wrap gap-2" role="group">
           <form method="post" action="{% url power_url pk=object.pk %}" class="d-inline">
             {% csrf_token %}<input type="hidden" name="action" value="on">
             <button type="submit" class="btn btn-success btn-sm text-white" title="{% trans 'Power On' %}">
