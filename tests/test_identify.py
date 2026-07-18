@@ -7,7 +7,6 @@ from netbox_bmc.drivers.base import BMCError
 from netbox_bmc.drivers.ipmi import IPMIDriver
 from netbox_bmc.drivers.redfish import RedfishDriver
 
-
 # --- Redfish -----------------------------------------------------------
 
 def make_redfish_driver():
