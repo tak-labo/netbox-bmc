@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+## [0.4.28] - 2026-07-19
+
+- fix(ui): stop rendering the Device-page BMC panel for devices with no `BMCEndpoint` —
+  `right_page()` unconditionally rendered the panel card even without one, so every Device
+  (switches, firewalls, PDUs, etc.) showed an empty "BMC" card with a "No BMC endpoint
+  configured" prompt. Guarded it the same way `buttons()` already was (#64)
+- refactor(ui): split the Identify On/Off buttons out of the "Power Control" card on the BMC
+  Endpoint page into their own "Identify" card — toggling the chassis identify LED isn't a
+  power operation (#64)
+
 ## [0.4.27] - 2026-07-18
 
 - fix(ipmi): purge stale pyghmi session cache before constructing each `IPMIDriver` to avoid
