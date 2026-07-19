@@ -3,23 +3,15 @@
 <div class="card">
   <h5 class="card-header">BMC</h5>
   <div class="card-body">
-    {% if bmc_endpoint %}
-      <table class="table table-hover attr-table">
-        <tr><th scope="row">{% trans "Address" %}</th>
-            <td>{{ bmc_endpoint.ip_address.address.ip }}{% if bmc_endpoint.port %}:{{ bmc_endpoint.port }}{% endif %}</td></tr>
-        <tr><th scope="row">{% trans "Protocol" %}</th>
-            <td>{{ bmc_endpoint.get_protocol_display }}</td></tr>
-        <tr><th scope="row">{% trans "Last Sync" %}</th>
-            <td>{{ bmc_endpoint.last_sync|placeholder }}</td></tr>
-        <tr><th scope="row">{% trans "Status" %}</th>
-            <td>{{ bmc_endpoint.last_sync_status|placeholder }}</td></tr>
-      </table>
-    {% else %}
-      <p class="text-muted mb-2">{% trans "No BMC endpoint configured." %}</p>
-      <a href="{% url 'plugins:netbox_bmc:bmcendpoint_add' %}?device={{ object.pk }}"
-         class="btn btn-sm btn-primary">
-        <i class="mdi mdi-plus-thick"></i> {% trans "Add BMC Endpoint" %}
-      </a>
-    {% endif %}
+    <table class="table table-hover attr-table">
+      <tr><th scope="row">{% trans "Address" %}</th>
+          <td>{{ bmc_endpoint.ip_address.address.ip }}{% if bmc_endpoint.port %}:{{ bmc_endpoint.port }}{% endif %}</td></tr>
+      <tr><th scope="row">{% trans "Protocol" %}</th>
+          <td>{{ bmc_endpoint.get_protocol_display }}</td></tr>
+      <tr><th scope="row">{% trans "Last Sync" %}</th>
+          <td>{{ bmc_endpoint.last_sync|placeholder }}</td></tr>
+      <tr><th scope="row">{% trans "Status" %}</th>
+          <td>{{ bmc_endpoint.last_sync_status|placeholder }}</td></tr>
+    </table>
   </div>
 </div>
