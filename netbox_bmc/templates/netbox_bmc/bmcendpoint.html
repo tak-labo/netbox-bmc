@@ -200,8 +200,14 @@
           </form>
         </div>
         {% endwith %}
+      </div>
+    </div>
+
+    <div class="card mb-3">
+      <h5 class="card-header">{% trans "Identify" %}</h5>
+      <div class="card-body">
         {% with identify_url="plugins:netbox_bmc:bmcendpoint_identify" %}
-        <div class="d-flex flex-wrap gap-2 mt-2">
+        <div class="d-flex flex-wrap gap-2">
           <form method="post" action="{% url identify_url pk=object.pk %}" class="d-inline">
             {% csrf_token %}<input type="hidden" name="on" value="true">
             <button type="submit" class="btn btn-outline-info btn-sm" title="{% trans 'Identify On' %}">

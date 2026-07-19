@@ -21,9 +21,12 @@ class DeviceBMCPanel(PluginTemplateExtension):
         )
 
     def right_page(self):
+        endpoint = self._get_bmc_endpoint()
+        if not endpoint:
+            return ""
         return self.render(
             "netbox_bmc/inc/device_bmc_panel.html",
-            extra_context={"bmc_endpoint": self._get_bmc_endpoint()},
+            extra_context={"bmc_endpoint": endpoint},
         )
 
 
