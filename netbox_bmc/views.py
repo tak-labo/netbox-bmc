@@ -417,21 +417,54 @@ class ConnectivityTestView(View):
             port=port,
             protocol=request.POST.get("protocol") or Protocol.AUTO,
             verify_ssl=request.POST.get("verify_ssl") == "true",
+            use_netbox_secrets=request.POST.get("use_netbox_secrets", "true") == "true",
             username=request.POST.get("username", ""),
             password=request.POST.get("password", ""),
         )
 
+        # フォームに username/password が入力されている場合、または
+        # "Use netbox-secrets" チェックボックスが外されている場合はそれを最優先で使う
+        # (get_credential() は netbox-secrets の既存 Secret を優先するため、
+        # 未保存の入力値をテストしたいユーザーの意図と食い違う)。
+        # チェックが入っていて両フィールドが空欄の場合のみ通常の解決順
+        # (netbox-secrets → 平文フィールド) に委ねる。
+        if not endpoint.use_netbox_secrets:
+            cred_username, cred_password = endpoint.username, endpoint.password
+            cred_source_label = _("plaintext field (netbox-secrets disabled)")
+        elif endpoint.username or endpoint.password:
+            cred_username, cred_password = endpoint.username, endpoint.password
+            cred_source_label = _("form input (not yet saved)")
+        else:
+            from .credentials import get_credential
+            cred = get_credential(endpoint, request=request)
+            cred_username, cred_password = cred.username, cred.password
+            cred_source_label = {
+                "netbox_secrets": _("netbox-secrets"),
+                "plaintext_fallback": _("plaintext field"),
+            }.get(cred.source, cred.source)
+
+        from .drivers.base import detect_and_build
+        address = str(ip_address.address.ip)
         try:
-            with endpoint.get_driver(request=request) as driver:
+            with detect_and_build(
+                address, cred_username, cred_password,
+                protocol=endpoint.protocol, port=endpoint.port,
+                verify_ssl=endpoint.verify_ssl,
+            ) as driver:
                 power_state = driver.get_power_state()
                 vendor = getattr(driver, "vendor", "")
                 protocol = driver.protocol
         except Exception as e:
-            return JsonResponse({"ok": False, "message": str(e)[:500]})
+            return JsonResponse({
+                "ok": False,
+                "message": str(e)[:500],
+                "credential_source": str(cred_source_label),
+            })
 
         parts = [f"protocol={protocol}"]
         if vendor:
             parts.append(f"vendor={vendor}")
         parts.append(f"power={power_state}")
+        parts.append(f"credential={cred_source_label}")
         message = _("Connected (%(details)s)") % {"details": ", ".join(parts)}
-        return JsonResponse({"ok": True, "message": message})
+        return JsonResponse({"ok": True, "message": message, "credential_source": str(cred_source_label)})

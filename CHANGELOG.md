@@ -2,6 +2,34 @@
 
 ## [Unreleased]
 
+- fix(nav): gate the "BMC Endpoints" menu item and its "Add" button behind
+  `netbox_bmc.view_bmcendpoint` / `add_bmcendpoint` permissions — previously both were shown to
+  every logged-in user regardless of permissions (the underlying views were already correctly
+  permission-checked, so this was a menu-visibility issue, not an access-control gap)
+- docs: expand the netbox-secrets service-account setup section in `docs/NETBOX_SECRETS.md`
+  with detailed non-Docker/Docker steps (RSA keypair, User Key activation, bind-mounting the
+  private key with correct permissions, the 2-layer permission model, and troubleshooting),
+  mirroring the level of detail in netbox-pdu-control's `docs/netbox-secrets-setup.md`
+- fix(ui): hide Power Control / Identify / Build Modules / Sync buttons on the BMC Endpoint
+  detail page from users without `netbox_bmc.change_bmcendpoint` — the template rendered them
+  unconditionally, so view-only users saw clickable action buttons that the corresponding views
+  (`PowerActionView` / `IdentifyActionView` / `BuildModulesView` / `*SyncActionView`) already
+  rejected server-side with "Permission denied." This was menu-visibility only, not an
+  access-control gap, same class of issue as the earlier nav-menu fix
+- fix(forms): make "Test Connection" on the Add/Edit BMC Endpoint form use the username/password
+  actually typed into the form, instead of always resolving credentials through the normal
+  priority (netbox-secrets Secret → plaintext fields) — previously, if the target Device already
+  had a `bmc-credentials` Secret, Test Connection silently ignored whatever was typed in the
+  form and validated against the stored Secret instead, so the result didn't reflect the input
+  being tested. The result message now also reports which credential source was actually used
+  (`credential=form input (not yet saved)` / `netbox-secrets` / `plaintext field`)
+- feat(secrets): add a "Use netbox-secrets" checkbox to the BMC Endpoint Add/Edit form
+  (`use_netbox_secrets`, default: on) so each endpoint can opt out of netbox-secrets and always
+  use its plaintext username/password fields, even when a `bmc-credentials` Secret exists for
+  the Device. The field is hidden entirely when netbox-secrets isn't installed. `get_credential()`
+  now checks this flag before attempting Secret resolution, and the detail page's Credentials
+  card and Test Connection's `credential=` label reflect it
+
 ## [0.4.28] - 2026-07-19
 
 - fix(ui): stop rendering the Device-page BMC panel for devices with no `BMCEndpoint` —

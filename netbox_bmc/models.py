@@ -34,6 +34,13 @@ class BMCEndpoint(JobsMixin, NetBoxModel):
     # netbox-secrets の Secret は Device に直接紐づくため、
     # BMCEndpoint にはポインタを持たない (Device の pk で検索する)。
     # ---
+    use_netbox_secrets = models.BooleanField(
+        default=True,
+        help_text=_("Use netbox-secrets (if installed) to resolve credentials for this "
+                     "endpoint. When disabled, the plaintext username/password fields "
+                     "below are always used, even if a bmc-credentials Secret exists "
+                     "for the Device."),
+    )
     username = models.CharField(
         max_length=128, blank=True,
         help_text=_("Fallback when netbox-secrets is not available"),
