@@ -34,7 +34,8 @@ class BMCEndpointForm(NetBoxModelForm):
 
     fieldsets = (
         FieldSet("device_role", "device", "ip_address", name=_("Device")),
-        FieldSet("port", "protocol", "username", "password", "verify_ssl", name=_("Connection")),
+        FieldSet("port", "protocol", "verify_ssl", name=_("Connection")),
+        FieldSet("use_netbox_secrets", "username", "password", name=_("Credentials")),
         FieldSet("tags", name=_("Other")),
     )
 
@@ -42,7 +43,7 @@ class BMCEndpointForm(NetBoxModelForm):
         model = BMCEndpoint
         fields = (
             "device", "ip_address", "port", "protocol",
-            "username", "password", "verify_ssl", "tags",
+            "use_netbox_secrets", "username", "password", "verify_ssl", "tags",
         )
 
     def __init__(self, *args, **kwargs):
@@ -50,3 +51,17 @@ class BMCEndpointForm(NetBoxModelForm):
         if self.instance.pk is None:
             plugin_cfg = settings.PLUGINS_CONFIG.get("netbox_bmc", {})
             self.fields["verify_ssl"].initial = plugin_cfg.get("default_verify_ssl", False)
+
+        try:
+            import netbox_secrets  # noqa: F401
+        except ImportError:
+            # netbox-secrets 未インストールの場合、このチェックボックスは無意味なので隠す
+            # (use_netbox_secrets はモデル側で default=True のままDBには残るが、
+            # netbox-secrets 自体が無い環境では credentials.get_credential() が
+            # どのみち _SecretsUnavailable にフォールバックするため実害はない)。
+            del self.fields["use_netbox_secrets"]
+            # Credentials フィールドセットは常に fieldsets の3番目 (index 2) —
+            # 上の class 属性定義の並びと対応させている。
+            fieldsets = list(self.fieldsets)
+            fieldsets[2] = FieldSet("username", "password", name=_("Credentials"))
+            self.fieldsets = tuple(fieldsets)

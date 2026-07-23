@@ -43,6 +43,8 @@
     data.append("password", fieldValue("id_password"));
     const verifySslEl = document.getElementById("id_verify_ssl");
     data.append("verify_ssl", verifySslEl && verifySslEl.checked ? "true" : "false");
+    const useSecretsEl = document.getElementById("id_use_netbox_secrets");
+    data.append("use_netbox_secrets", !useSecretsEl || useSecretsEl.checked ? "true" : "false");
 
     btn.disabled = true;
     result.textContent = "";

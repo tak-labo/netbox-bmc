@@ -34,6 +34,13 @@ class BMCEndpoint(JobsMixin, NetBoxModel):
     # netbox-secrets の Secret は Device に直接紐づくため、
     # BMCEndpoint にはポインタを持たない (Device の pk で検索する)。
     # ---
+    use_netbox_secrets = models.BooleanField(
+        default=True,
+        help_text=_("Use netbox-secrets (if installed) to resolve credentials for this "
+                     "endpoint. When disabled, the plaintext username/password fields "
+                     "below are always used, even if a bmc-credentials Secret exists "
+                     "for the Device."),
+    )
     username = models.CharField(
         max_length=128, blank=True,
         help_text=_("Fallback when netbox-secrets is not available"),
@@ -110,13 +117,22 @@ class BMCEndpoint(JobsMixin, NetBoxModel):
         None の場合はサービスアカウント秘密鍵またはフォールバック平文を使用。
         """
         from .credentials import get_credential
-        from .drivers.base import detect_and_build
 
         cred = get_credential(self, request=request)
+        return self.build_driver(cred.username, cred.password)
+
+    def build_driver(self, username, password):
+        """
+        指定した username/password で BMC ドライバを生成して返す (credential 解決を
+        バイパスしたい呼び出し元向け。例: ConnectivityTestView が未保存の入力値を
+        直接テストする場合)。
+        """
+        from .drivers.base import detect_and_build
+
         # IPAddress.address is a netaddr.IPNetwork; .ip gives the host part
         address = str(self.ip_address.address.ip)
         return detect_and_build(
-            address, cred.username, cred.password,
+            address, username, password,
             protocol=self.protocol, port=self.port,
             verify_ssl=self.verify_ssl,
         )

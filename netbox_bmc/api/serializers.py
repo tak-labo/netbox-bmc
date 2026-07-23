@@ -15,7 +15,7 @@ class BMCEndpointSerializer(NetBoxModelSerializer):
         fields = (
             "id", "url", "display",
             "device", "ip_address", "port", "protocol", "verify_ssl",
-            "username", "password",
+            "use_netbox_secrets", "username", "password",
             "detected_vendor", "detected_protocol",
             "last_sync", "last_sync_status",
             "tags", "custom_fields", "created", "last_updated",

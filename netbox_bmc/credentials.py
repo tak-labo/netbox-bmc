@@ -63,9 +63,19 @@ def get_credential(endpoint: BMCEndpoint,
       - request が渡された場合はセッションキーで復号
       - request=None の場合はサービスアカウント秘密鍵で復号
 
-    どちらも失敗した場合 / netbox-secrets 未インストールの場合:
+    どちらも失敗した場合 / netbox-secrets 未インストールの場合 /
+    endpoint.use_netbox_secrets が False の場合:
       - endpoint.username / endpoint.password を返す
     """
+    if not endpoint.use_netbox_secrets:
+        logger.debug("use_netbox_secrets disabled for %s, using plaintext fields",
+                     endpoint.device)
+        return Credential(
+            username=endpoint.username,
+            password=endpoint.password,
+            source="plaintext_fallback",
+        )
+
     try:
         return _get_from_secrets(endpoint, request)
     except _SecretsUnavailable:

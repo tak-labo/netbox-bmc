@@ -474,3 +474,24 @@ msgstr "テスト中..."
 
 msgid "Request failed."
 msgstr "リクエストに失敗しました。"
+
+msgid "Use netbox-secrets"
+msgstr "netbox-secrets を使用する"
+
+msgid "Use netbox-secrets (if installed) to resolve credentials for this endpoint. When disabled, the plaintext username/password fields below are always used, even if a bmc-credentials Secret exists for the Device."
+msgstr "このエンドポイントの認証情報解決に netbox-secrets (インストールされている場合) を使用します。無効にすると、Device に bmc-credentials Secret が存在していても、常に下記の平文 username/password フィールドが使用されます。"
+
+msgid "netbox-secrets disabled for this endpoint"
+msgstr "このエンドポイントでは netbox-secrets が無効"
+
+msgid "plaintext field (netbox-secrets disabled)"
+msgstr "平文フィールド (netbox-secrets 無効)"
+
+msgid "form input (not yet saved)"
+msgstr "フォーム入力値 (未保存)"
+
+msgid "plaintext field"
+msgstr "平文フィールド"
+
+msgid "netbox-secrets"
+msgstr "netbox-secrets"
