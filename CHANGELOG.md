@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.4.29] - 2026-07-23
+
 - fix(nav): gate the "BMC Endpoints" menu item and its "Add" button behind
   `netbox_bmc.view_bmcendpoint` / `add_bmcendpoint` permissions — previously both were shown to
   every logged-in user regardless of permissions (the underlying views were already correctly
