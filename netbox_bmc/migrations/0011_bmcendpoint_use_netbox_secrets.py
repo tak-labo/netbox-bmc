@@ -10,6 +10,12 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="bmcendpoint",
             name="use_netbox_secrets",
-            field=models.BooleanField(default=True),
+            field=models.BooleanField(
+                default=True,
+                help_text="Use netbox-secrets (if installed) to resolve credentials for this "
+                          "endpoint. When disabled, the plaintext username/password fields "
+                          "below are always used, even if a bmc-credentials Secret exists "
+                          "for the Device.",
+            ),
         ),
     ]

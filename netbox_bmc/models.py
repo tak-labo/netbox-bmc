@@ -117,13 +117,22 @@ class BMCEndpoint(JobsMixin, NetBoxModel):
         None の場合はサービスアカウント秘密鍵またはフォールバック平文を使用。
         """
         from .credentials import get_credential
-        from .drivers.base import detect_and_build
 
         cred = get_credential(self, request=request)
+        return self.build_driver(cred.username, cred.password)
+
+    def build_driver(self, username, password):
+        """
+        指定した username/password で BMC ドライバを生成して返す (credential 解決を
+        バイパスしたい呼び出し元向け。例: ConnectivityTestView が未保存の入力値を
+        直接テストする場合)。
+        """
+        from .drivers.base import detect_and_build
+
         # IPAddress.address is a netaddr.IPNetwork; .ip gives the host part
         address = str(self.ip_address.address.ip)
         return detect_and_build(
-            address, cred.username, cred.password,
+            address, username, password,
             protocol=self.protocol, port=self.port,
             verify_ssl=self.verify_ssl,
         )

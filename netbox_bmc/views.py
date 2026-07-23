@@ -422,42 +422,39 @@ class ConnectivityTestView(View):
             password=request.POST.get("password", ""),
         )
 
-        # フォームに username/password が入力されている場合、または
-        # "Use netbox-secrets" チェックボックスが外されている場合はそれを最優先で使う
-        # (get_credential() は netbox-secrets の既存 Secret を優先するため、
-        # 未保存の入力値をテストしたいユーザーの意図と食い違う)。
-        # チェックが入っていて両フィールドが空欄の場合のみ通常の解決順
-        # (netbox-secrets → 平文フィールド) に委ねる。
-        if not endpoint.use_netbox_secrets:
-            cred_username, cred_password = endpoint.username, endpoint.password
-            cred_source_label = _("plaintext field (netbox-secrets disabled)")
-        elif endpoint.username or endpoint.password:
+        # 両方のフィールドに入力があれば、それを最優先で使う (未保存の入力値を
+        # テストしたいユーザーの意図を、既存の netbox-secrets Secret より優先する)。
+        # use_netbox_secrets=False の場合は get_credential() 自身が平文フィールドを
+        # 返すため、片方だけ入力されている場合や両方空欄の場合は通常の解決順
+        # (netbox-secrets → 平文フィールド、または use_netbox_secrets=False なら
+        # 常に平文フィールド) にそのまま委ねる。
+        from .credentials import get_credential
+        if endpoint.use_netbox_secrets and endpoint.username and endpoint.password:
             cred_username, cred_password = endpoint.username, endpoint.password
             cred_source_label = _("form input (not yet saved)")
         else:
-            from .credentials import get_credential
             cred = get_credential(endpoint, request=request)
             cred_username, cred_password = cred.username, cred.password
-            cred_source_label = {
-                "netbox_secrets": _("netbox-secrets"),
-                "plaintext_fallback": _("plaintext field"),
-            }.get(cred.source, cred.source)
+            if not endpoint.use_netbox_secrets:
+                cred_source_label = _("plaintext field (netbox-secrets disabled)")
+            else:
+                cred_source_label = {
+                    "netbox_secrets": _("netbox-secrets"),
+                    "plaintext_fallback": _("plaintext field"),
+                }.get(cred.source, cred.source)
 
-        from .drivers.base import detect_and_build
-        address = str(ip_address.address.ip)
         try:
-            with detect_and_build(
-                address, cred_username, cred_password,
-                protocol=endpoint.protocol, port=endpoint.port,
-                verify_ssl=endpoint.verify_ssl,
-            ) as driver:
+            with endpoint.build_driver(cred_username, cred_password) as driver:
                 power_state = driver.get_power_state()
                 vendor = getattr(driver, "vendor", "")
                 protocol = driver.protocol
         except Exception as e:
+            message = _("%(error)s (credential=%(source)s)") % {
+                "error": str(e)[:500], "source": cred_source_label,
+            }
             return JsonResponse({
                 "ok": False,
-                "message": str(e)[:500],
+                "message": message,
                 "credential_source": str(cred_source_label),
             })
 

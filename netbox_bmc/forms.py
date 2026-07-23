@@ -32,19 +32,12 @@ class BMCEndpointForm(NetBoxModelForm):
         help_text=_("Fallback when netbox-secrets is not available (plaintext)"),
     )
 
-    fieldsets_with_secrets = (
+    fieldsets = (
         FieldSet("device_role", "device", "ip_address", name=_("Device")),
         FieldSet("port", "protocol", "verify_ssl", name=_("Connection")),
         FieldSet("use_netbox_secrets", "username", "password", name=_("Credentials")),
         FieldSet("tags", name=_("Other")),
     )
-    fieldsets_without_secrets = (
-        FieldSet("device_role", "device", "ip_address", name=_("Device")),
-        FieldSet("port", "protocol", "verify_ssl", name=_("Connection")),
-        FieldSet("username", "password", name=_("Credentials")),
-        FieldSet("tags", name=_("Other")),
-    )
-    fieldsets = fieldsets_with_secrets
 
     class Meta:
         model = BMCEndpoint
@@ -67,4 +60,8 @@ class BMCEndpointForm(NetBoxModelForm):
             # netbox-secrets 自体が無い環境では credentials.get_credential() が
             # どのみち _SecretsUnavailable にフォールバックするため実害はない)。
             del self.fields["use_netbox_secrets"]
-            self.fieldsets = self.fieldsets_without_secrets
+            # Credentials フィールドセットは常に fieldsets の3番目 (index 2) —
+            # 上の class 属性定義の並びと対応させている。
+            fieldsets = list(self.fieldsets)
+            fieldsets[2] = FieldSet("username", "password", name=_("Credentials"))
+            self.fieldsets = tuple(fieldsets)

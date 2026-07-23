@@ -29,6 +29,21 @@
   the Device. The field is hidden entirely when netbox-secrets isn't installed. `get_credential()`
   now checks this flag before attempting Secret resolution, and the detail page's Credentials
   card and Test Connection's `credential=` label reflect it
+- fix(forms): only override netbox-secrets with typed form input in Test Connection when
+  *both* username and password are filled in — previously, typing only a username while
+  leaving the password blank (e.g. correcting a typo on an endpoint whose password is meant
+  to keep coming from an existing Secret) silently sent an empty password instead of falling
+  back to `get_credential()`'s normal resolution, producing a misleading auth failure
+- fix(forms): fold the credential source into the visible error message when Test Connection
+  fails (`%(error)s (credential=%(source)s)`), not just the success message — previously a
+  failed test never told the user which credential source (netbox-secrets / plaintext field /
+  form input) was actually attempted, since the frontend only renders `message`, not the
+  separate `credential_source` JSON key
+- refactor: extract `BMCEndpoint.build_driver(username, password)` from `get_driver()` so
+  `ConnectivityTestView` can reuse the documented driver-construction entry point instead of
+  duplicating address extraction + `detect_and_build()` inline; also expose `use_netbox_secrets`
+  on the REST API serializer and add the missing `help_text` to migration 0011 (kept in sync
+  with the model field, per `makemigrations --check --dry-run`)
 
 ## [0.4.28] - 2026-07-19
 
