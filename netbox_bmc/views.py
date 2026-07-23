@@ -39,9 +39,14 @@ class BMCEndpointView(generic.ObjectView):
             ).exists()
         except ImportError:
             pass
+        show_plaintext_credentials = bool(
+            instance.username
+            and (not secrets_available or not instance.use_netbox_secrets or not secret_found)
+        )
         return {
             "secrets_available": secrets_available,
             "secret_found": secret_found,
+            "show_plaintext_credentials": show_plaintext_credentials,
         }
 
 

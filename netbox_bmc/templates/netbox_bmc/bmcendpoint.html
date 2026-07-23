@@ -119,7 +119,7 @@
             {% endif %}
           </td>
         </tr>
-        {% if object.username and (not secrets_available or not object.use_netbox_secrets or not secret_found) %}
+        {% if show_plaintext_credentials %}
           <tr><th scope="row">{% trans "Username" %}</th>
               <td><code>{{ object.username }}</code></td></tr>
           <tr><th scope="row">{% trans "Password" %}</th>

@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+## [0.4.30] - 2026-07-23
+
+- fix(ui): fix `TemplateSyntaxError` on the BMC Endpoint detail page ("Could not parse the
+  remainder: '(not' from '(not'") — Django's `{% if %}` tag does not support parentheses for
+  grouping `and`/`or`, so the credentials-source condition added in 0.4.29
+  (`{% if object.username and (not secrets_available or not object.use_netbox_secrets or not
+  secret_found) %}`) was invalid template syntax and broke every BMC Endpoint detail page.
+  Moved the condition into `BMCEndpointView.get_extra_context()` as a plain Python boolean
+  (`show_plaintext_credentials`) instead of trying to express it inline in the template.
+
 ## [0.4.29] - 2026-07-23
 
 - fix(nav): gate the "BMC Endpoints" menu item and its "Add" button behind
