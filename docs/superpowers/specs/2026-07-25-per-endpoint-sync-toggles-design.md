@@ -128,6 +128,22 @@ New optional keys, default `True` when absent:
 }
 ```
 
+### i18n (`locale/ja/LC_MESSAGES/django.po`)
+
+Per this repo's convention, every new user-facing string is wrapped in
+`gettext_lazy as _` (form field labels/help_text, the `FieldSet` name, the
+`messages.error(...)` strings in the 4 `*SyncActionView.post()` guards, and the job
+status messages in `self.job.data`) and gets a matching `msgid`/`msgstr` pair added to
+`django.po`, then recompiled to `.mo`. New msgids introduced by this change:
+
+- `"Sync Options"` (FieldSet name)
+- Field labels for the 4 checkboxes (Django auto-derives labels from field names unless
+  overridden — set explicit `label=_(...)` on each so the auto "Network sync enabled"
+  style label gets a natural Japanese translation instead of a mechanical one)
+- `"... sync is disabled for this endpoint."` (or one string per kind, matching the
+  existing per-kind phrasing already used in `messages.success` calls like `"Network
+  sync queued."`)
+
 ## Testing
 
 - `jobs.py` (like `views.py` and `models.py`) imports `django.utils.timezone` and isn't
