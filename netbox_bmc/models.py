@@ -64,21 +64,46 @@ class BMCEndpoint(JobsMixin, NetBoxModel):
     # inventory.BmcNetworkInterface のリストを dataclasses.asdict() でシリアライズして保存
     network_interfaces = models.JSONField(default=list, blank=True)
     network_last_sync = models.DateTimeField(blank=True, null=True)
+    network_sync_enabled = models.BooleanField(
+        default=True,
+        help_text=_("Sync this endpoint's network configuration in the background. "
+                     "When disabled, the Network card is hidden and the manual sync "
+                     "button and scheduled bulk sync both skip this endpoint."),
+    )
 
     # センサーテレメトリ (SensorsSyncJob / ScheduledSensorsSyncJob が更新)
     # inventory.SensorReading のリストを dataclasses.asdict() でシリアライズして保存
     sensors = models.JSONField(default=list, blank=True)
     sensors_last_sync = models.DateTimeField(blank=True, null=True)
+    sensors_sync_enabled = models.BooleanField(
+        default=True,
+        help_text=_("Sync this endpoint's sensor telemetry in the background. When "
+                     "disabled, the Sensors card is hidden and the manual sync button "
+                     "and scheduled bulk sync both skip this endpoint."),
+    )
 
     # System Event Log (EventLogSyncJob / ScheduledEventLogSyncJob が更新)
     # inventory.SelEntry のリストを dataclasses.asdict() でシリアライズして保存
     event_log = models.JSONField(default=list, blank=True)
     event_log_last_sync = models.DateTimeField(blank=True, null=True)
+    event_log_sync_enabled = models.BooleanField(
+        default=True,
+        help_text=_("Sync this endpoint's System Event Log in the background. When "
+                     "disabled, the Event Log card is hidden and the manual sync "
+                     "button and scheduled bulk sync both skip this endpoint."),
+    )
 
     # BMC自身のヘルス状態 (変化しうるため ManagerHealthSyncJob / ScheduledManagerHealthSyncJob
     # で独立して更新する。ファームウェアバージョンは detected_firmware_version 側)
     manager_health = models.CharField(max_length=32, blank=True)
     manager_health_last_sync = models.DateTimeField(blank=True, null=True)
+    manager_health_sync_enabled = models.BooleanField(
+        default=True,
+        help_text=_("Sync this endpoint's BMC health status in the background. When "
+                     "disabled, the Manager Health sync button and its fields on the "
+                     "Sync Status card are hidden, and the manual sync button and "
+                     "scheduled bulk sync both skip this endpoint."),
+    )
 
     class Meta:
         ordering = ("device",)
