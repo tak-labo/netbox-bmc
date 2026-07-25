@@ -27,12 +27,25 @@ ManagerHealthSyncJob / ScheduledManagerHealthSyncJob: BMC自身のヘルス状�
 import logging
 from dataclasses import asdict
 
+from django.conf import settings
 from django.utils import timezone
 from netbox.jobs import JobRunner
 
 logger = logging.getLogger("netbox_bmc.jobs")
 
 EVENT_LOG_SYNC_LIMIT = 50
+
+
+def _sync_enabled(kind: str, endpoint) -> bool:
+    """kind: 'network' | 'sensors' | 'event_log' | 'manager_health'.
+
+    Combines the plugin-wide master switch (PLUGINS_CONFIG) with the
+    per-endpoint checkbox. The plugin-wide switch wins when False.
+    """
+    plugin_cfg = settings.PLUGINS_CONFIG.get("netbox_bmc", {})
+    if not plugin_cfg.get(f"{kind}_sync_enabled", True):
+        return False
+    return getattr(endpoint, f"{kind}_sync_enabled")
 
 
 class ScheduledInventorySyncJob(JobRunner):
@@ -94,9 +107,14 @@ class ScheduledNetworkSyncJob(JobRunner):
     def run(self, *args, **kwargs):
         from .models import BMCEndpoint
 
-        endpoints = BMCEndpoint.objects.all()
+        all_endpoints = BMCEndpoint.objects.all()
+        endpoints = [e for e in all_endpoints if _sync_enabled("network", e)]
+        skipped = len(all_endpoints) - len(endpoints)
         succeeded = sum(_sync_network_config(e, logger_=self.logger) is None for e in endpoints)
-        self.job.data = {"message": f"Synced {succeeded}/{len(endpoints)} endpoint(s)."}
+        self.job.data = {
+            "message": f"Synced {succeeded}/{len(endpoints)} endpoint(s) "
+                       f"({skipped} skipped: sync disabled)."
+        }
 
 
 def _sync_sensors(endpoint, logger_=logger) -> Exception | None:
@@ -142,9 +160,14 @@ class ScheduledSensorsSyncJob(JobRunner):
     def run(self, *args, **kwargs):
         from .models import BMCEndpoint
 
-        endpoints = BMCEndpoint.objects.all()
+        all_endpoints = BMCEndpoint.objects.all()
+        endpoints = [e for e in all_endpoints if _sync_enabled("sensors", e)]
+        skipped = len(all_endpoints) - len(endpoints)
         succeeded = sum(_sync_sensors(e, logger_=self.logger) is None for e in endpoints)
-        self.job.data = {"message": f"Synced {succeeded}/{len(endpoints)} endpoint(s)."}
+        self.job.data = {
+            "message": f"Synced {succeeded}/{len(endpoints)} endpoint(s) "
+                       f"({skipped} skipped: sync disabled)."
+        }
 
 
 def _sync_event_log(endpoint, logger_=logger) -> Exception | None:
@@ -190,9 +213,14 @@ class ScheduledEventLogSyncJob(JobRunner):
     def run(self, *args, **kwargs):
         from .models import BMCEndpoint
 
-        endpoints = BMCEndpoint.objects.all()
+        all_endpoints = BMCEndpoint.objects.all()
+        endpoints = [e for e in all_endpoints if _sync_enabled("event_log", e)]
+        skipped = len(all_endpoints) - len(endpoints)
         succeeded = sum(_sync_event_log(e, logger_=self.logger) is None for e in endpoints)
-        self.job.data = {"message": f"Synced {succeeded}/{len(endpoints)} endpoint(s)."}
+        self.job.data = {
+            "message": f"Synced {succeeded}/{len(endpoints)} endpoint(s) "
+                       f"({skipped} skipped: sync disabled)."
+        }
 
 
 def _sync_manager_health(endpoint, logger_=logger) -> Exception | None:
@@ -240,6 +268,11 @@ class ScheduledManagerHealthSyncJob(JobRunner):
     def run(self, *args, **kwargs):
         from .models import BMCEndpoint
 
-        endpoints = BMCEndpoint.objects.all()
+        all_endpoints = BMCEndpoint.objects.all()
+        endpoints = [e for e in all_endpoints if _sync_enabled("manager_health", e)]
+        skipped = len(all_endpoints) - len(endpoints)
         succeeded = sum(_sync_manager_health(e, logger_=self.logger) is None for e in endpoints)
-        self.job.data = {"message": f"Synced {succeeded}/{len(endpoints)} endpoint(s)."}
+        self.job.data = {
+            "message": f"Synced {succeeded}/{len(endpoints)} endpoint(s) "
+                       f"({skipped} skipped: sync disabled)."
+        }
