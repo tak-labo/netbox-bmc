@@ -2,6 +2,26 @@
 
 ## [Unreleased]
 
+## [0.4.31] - 2026-07-26
+
+- fix(jobs): chain the original exception into the generic `RuntimeError` raised by
+  `NetworkSyncJob` / `SensorsSyncJob` / `EventLogSyncJob` / `ManagerHealthSyncJob` when a sync
+  fails — previously `_sync_*()` swallowed the caught exception into a `logger.warning()` line
+  and the job re-raised only `RuntimeError(f"... sync failed for {endpoint}")` with no cause,
+  so diagnosing a real failure (e.g. a 401 from a misconfigured netbox-secrets service account)
+  required manually correlating worker-log timestamps instead of just reading the Job's error
+  field. `_sync_*()` now returns the caught exception (or `None` on success) so the `RuntimeError`
+  can `raise ... from e` and include the original message
+- feat(sync): add per-`BMCEndpoint` checkboxes ("Sync Options" on the Add/Edit form) to
+  independently enable/disable the Network / Sensors / Event Log / Manager Health background
+  sync systems, plus a matching `PLUGINS_CONFIG["netbox_bmc"]["<kind>_sync_enabled"]` master
+  switch per sync type (default `True`) that overrides the per-endpoint checkbox when `False`.
+  When a sync type is disabled (globally or per-endpoint): the scheduled bulk sync job skips
+  that endpoint, the manual "Sync X" button/view refuses the request, and the corresponding
+  card is hidden from the BMC Endpoint detail page (Manager Health has no dedicated card, so
+  only its sync button and its 2 data rows inside the shared "Sync Status" card are conditional
+  — the unrelated Inventory-scan fields in that same card stay visible)
+
 ## [0.4.30] - 2026-07-23
 
 - fix(ui): fix `TemplateSyntaxError` on the BMC Endpoint detail page ("Could not parse the
