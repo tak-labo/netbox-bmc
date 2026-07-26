@@ -36,6 +36,8 @@ class BMCEndpointForm(NetBoxModelForm):
         FieldSet("device_role", "device", "ip_address", name=_("Device")),
         FieldSet("port", "protocol", "verify_ssl", name=_("Connection")),
         FieldSet("use_netbox_secrets", "username", "password", name=_("Credentials")),
+        FieldSet("network_sync_enabled", "sensors_sync_enabled", "event_log_sync_enabled",
+                  "manager_health_sync_enabled", name=_("Sync Options")),
         FieldSet("tags", name=_("Other")),
     )
 
@@ -43,7 +45,9 @@ class BMCEndpointForm(NetBoxModelForm):
         model = BMCEndpoint
         fields = (
             "device", "ip_address", "port", "protocol",
-            "use_netbox_secrets", "username", "password", "verify_ssl", "tags",
+            "use_netbox_secrets", "username", "password", "verify_ssl",
+            "network_sync_enabled", "sensors_sync_enabled", "event_log_sync_enabled",
+            "manager_health_sync_enabled", "tags",
         )
 
     def __init__(self, *args, **kwargs):
@@ -64,4 +68,24 @@ class BMCEndpointForm(NetBoxModelForm):
             # 上の class 属性定義の並びと対応させている。
             fieldsets = list(self.fieldsets)
             fieldsets[2] = FieldSet("username", "password", name=_("Credentials"))
+            self.fieldsets = tuple(fieldsets)
+
+        # プラグイン全体でグローバルに無効化されている同期種別のチェックボックスは
+        # 意味がないのでフォームから隠す (グローバル無効時は endpoint 側の値に
+        # 関わらず _sync_enabled() が常に False を返すため)。
+        plugin_cfg = settings.PLUGINS_CONFIG.get("netbox_bmc", {})
+        sync_kinds = ("network", "sensors", "event_log", "manager_health")
+        hidden_kinds = [k for k in sync_kinds if not plugin_cfg.get(f"{k}_sync_enabled", True)]
+        for kind in hidden_kinds:
+            del self.fields[f"{kind}_sync_enabled"]
+        if hidden_kinds:
+            remaining = [f"{kind}_sync_enabled" for kind in sync_kinds if kind not in hidden_kinds]
+            fieldsets = list(self.fieldsets)
+            sync_options_index = next(
+                i for i, fs in enumerate(fieldsets) if fs.name == _("Sync Options")
+            )
+            if remaining:
+                fieldsets[sync_options_index] = FieldSet(*remaining, name=_("Sync Options"))
+            else:
+                del fieldsets[sync_options_index]
             self.fieldsets = tuple(fieldsets)

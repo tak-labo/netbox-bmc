@@ -27,12 +27,25 @@ ManagerHealthSyncJob / ScheduledManagerHealthSyncJob: BMC自身のヘルス状�
 import logging
 from dataclasses import asdict
 
+from django.conf import settings
 from django.utils import timezone
 from netbox.jobs import JobRunner
 
 logger = logging.getLogger("netbox_bmc.jobs")
 
 EVENT_LOG_SYNC_LIMIT = 50
+
+
+def _sync_enabled(kind: str, endpoint) -> bool:
+    """kind: 'network' | 'sensors' | 'event_log' | 'manager_health'.
+
+    Combines the plugin-wide master switch (PLUGINS_CONFIG) with the
+    per-endpoint checkbox. The plugin-wide switch wins when False.
+    """
+    plugin_cfg = settings.PLUGINS_CONFIG.get("netbox_bmc", {})
+    if not plugin_cfg.get(f"{kind}_sync_enabled", True):
+        return False
+    return getattr(endpoint, f"{kind}_sync_enabled")
 
 
 class ScheduledInventorySyncJob(JobRunner):
@@ -49,23 +62,24 @@ class ScheduledInventorySyncJob(JobRunner):
         logger.info("ScheduledInventorySyncJob: bulk module sync not yet implemented.")
 
 
-def _sync_network_config(endpoint, logger_=logger) -> bool:
+def _sync_network_config(endpoint, logger_=logger) -> Exception | None:
     """1 エンドポイント分のネットワーク設定を取得して DB に保存する。
 
-    成功可否を bool で返す (呼び出し元で件数集計できるように)。
-    1エンドポイントの失敗が一括ジョブ全体を止めないよう、例外はここで吸収する。
+    成功時は None、失敗時は捕捉した例外を返す (呼び出し元で件数集計や
+    RuntimeError への連鎖ができるように)。1エンドポイントの失敗が一括
+    ジョブ全体を止めないよう、例外はここで吸収する。
     """
     try:
         with endpoint.get_driver() as driver:
             ifaces = driver.get_network_config()
     except Exception as e:
         logger_.warning("Network sync failed for %s: %s", endpoint, e)
-        return False
+        return e
 
     endpoint.network_interfaces = [asdict(i) for i in ifaces]
     endpoint.network_last_sync = timezone.now()
     endpoint.save(update_fields=["network_interfaces", "network_last_sync"])
-    return True
+    return None
 
 
 class NetworkSyncJob(JobRunner):
@@ -79,8 +93,9 @@ class NetworkSyncJob(JobRunner):
         if endpoint is None:
             self.logger.error("NetworkSyncJob requires a BMCEndpoint instance")
             return
-        if not _sync_network_config(endpoint, logger_=self.logger):
-            raise RuntimeError(f"Network sync failed for {endpoint}")
+        error = _sync_network_config(endpoint, logger_=self.logger)
+        if error is not None:
+            raise RuntimeError(f"Network sync failed for {endpoint}: {error}") from error
 
 
 class ScheduledNetworkSyncJob(JobRunner):
@@ -92,24 +107,32 @@ class ScheduledNetworkSyncJob(JobRunner):
     def run(self, *args, **kwargs):
         from .models import BMCEndpoint
 
-        endpoints = BMCEndpoint.objects.all()
-        succeeded = sum(_sync_network_config(e, logger_=self.logger) for e in endpoints)
-        self.job.data = {"message": f"Synced {succeeded}/{len(endpoints)} endpoint(s)."}
+        all_endpoints = BMCEndpoint.objects.all()
+        endpoints = [e for e in all_endpoints if _sync_enabled("network", e)]
+        skipped = len(all_endpoints) - len(endpoints)
+        succeeded = sum(_sync_network_config(e, logger_=self.logger) is None for e in endpoints)
+        self.job.data = {
+            "message": f"Synced {succeeded}/{len(endpoints)} endpoint(s) "
+                       f"({skipped} skipped: sync disabled)."
+        }
 
 
-def _sync_sensors(endpoint, logger_=logger) -> bool:
-    """1 エンドポイント分のセンサーテレメトリを取得して DB に保存する。"""
+def _sync_sensors(endpoint, logger_=logger) -> Exception | None:
+    """1 エンドポイント分のセンサーテレメトリを取得して DB に保存する。
+
+    成功時は None、失敗時は捕捉した例外を返す。
+    """
     try:
         with endpoint.get_driver() as driver:
             readings = driver.get_sensors()
     except Exception as e:
         logger_.warning("Sensors sync failed for %s: %s", endpoint, e)
-        return False
+        return e
 
     endpoint.sensors = [asdict(r) for r in readings]
     endpoint.sensors_last_sync = timezone.now()
     endpoint.save(update_fields=["sensors", "sensors_last_sync"])
-    return True
+    return None
 
 
 class SensorsSyncJob(JobRunner):
@@ -123,8 +146,9 @@ class SensorsSyncJob(JobRunner):
         if endpoint is None:
             self.logger.error("SensorsSyncJob requires a BMCEndpoint instance")
             return
-        if not _sync_sensors(endpoint, logger_=self.logger):
-            raise RuntimeError(f"Sensors sync failed for {endpoint}")
+        error = _sync_sensors(endpoint, logger_=self.logger)
+        if error is not None:
+            raise RuntimeError(f"Sensors sync failed for {endpoint}: {error}") from error
 
 
 class ScheduledSensorsSyncJob(JobRunner):
@@ -136,24 +160,32 @@ class ScheduledSensorsSyncJob(JobRunner):
     def run(self, *args, **kwargs):
         from .models import BMCEndpoint
 
-        endpoints = BMCEndpoint.objects.all()
-        succeeded = sum(_sync_sensors(e, logger_=self.logger) for e in endpoints)
-        self.job.data = {"message": f"Synced {succeeded}/{len(endpoints)} endpoint(s)."}
+        all_endpoints = BMCEndpoint.objects.all()
+        endpoints = [e for e in all_endpoints if _sync_enabled("sensors", e)]
+        skipped = len(all_endpoints) - len(endpoints)
+        succeeded = sum(_sync_sensors(e, logger_=self.logger) is None for e in endpoints)
+        self.job.data = {
+            "message": f"Synced {succeeded}/{len(endpoints)} endpoint(s) "
+                       f"({skipped} skipped: sync disabled)."
+        }
 
 
-def _sync_event_log(endpoint, logger_=logger) -> bool:
-    """1 エンドポイント分の System Event Log を取得して DB に保存する。"""
+def _sync_event_log(endpoint, logger_=logger) -> Exception | None:
+    """1 エンドポイント分の System Event Log を取得して DB に保存する。
+
+    成功時は None、失敗時は捕捉した例外を返す。
+    """
     try:
         with endpoint.get_driver() as driver:
             entries = driver.get_event_log(limit=EVENT_LOG_SYNC_LIMIT)
     except Exception as e:
         logger_.warning("Event log sync failed for %s: %s", endpoint, e)
-        return False
+        return e
 
     endpoint.event_log = [asdict(e) for e in entries]
     endpoint.event_log_last_sync = timezone.now()
     endpoint.save(update_fields=["event_log", "event_log_last_sync"])
-    return True
+    return None
 
 
 class EventLogSyncJob(JobRunner):
@@ -167,8 +199,9 @@ class EventLogSyncJob(JobRunner):
         if endpoint is None:
             self.logger.error("EventLogSyncJob requires a BMCEndpoint instance")
             return
-        if not _sync_event_log(endpoint, logger_=self.logger):
-            raise RuntimeError(f"Event log sync failed for {endpoint}")
+        error = _sync_event_log(endpoint, logger_=self.logger)
+        if error is not None:
+            raise RuntimeError(f"Event log sync failed for {endpoint}: {error}") from error
 
 
 class ScheduledEventLogSyncJob(JobRunner):
@@ -180,14 +213,20 @@ class ScheduledEventLogSyncJob(JobRunner):
     def run(self, *args, **kwargs):
         from .models import BMCEndpoint
 
-        endpoints = BMCEndpoint.objects.all()
-        succeeded = sum(_sync_event_log(e, logger_=self.logger) for e in endpoints)
-        self.job.data = {"message": f"Synced {succeeded}/{len(endpoints)} endpoint(s)."}
+        all_endpoints = BMCEndpoint.objects.all()
+        endpoints = [e for e in all_endpoints if _sync_enabled("event_log", e)]
+        skipped = len(all_endpoints) - len(endpoints)
+        succeeded = sum(_sync_event_log(e, logger_=self.logger) is None for e in endpoints)
+        self.job.data = {
+            "message": f"Synced {succeeded}/{len(endpoints)} endpoint(s) "
+                       f"({skipped} skipped: sync disabled)."
+        }
 
 
-def _sync_manager_health(endpoint, logger_=logger) -> bool:
+def _sync_manager_health(endpoint, logger_=logger) -> Exception | None:
     """1 エンドポイント分の BMC ヘルス状態を取得して DB に保存する。
 
+    成功時は None、失敗時は捕捉した例外を返す。
     firmware_version は滅多に変わらないため、ここでは扱わない
     (Inventory スキャン (BuildModulesView) 側で detected_firmware_version に保存される)。
     """
@@ -196,12 +235,12 @@ def _sync_manager_health(endpoint, logger_=logger) -> bool:
             info = driver.get_manager_info()
     except Exception as e:
         logger_.warning("Manager health sync failed for %s: %s", endpoint, e)
-        return False
+        return e
 
     endpoint.manager_health = info.health
     endpoint.manager_health_last_sync = timezone.now()
     endpoint.save(update_fields=["manager_health", "manager_health_last_sync"])
-    return True
+    return None
 
 
 class ManagerHealthSyncJob(JobRunner):
@@ -215,8 +254,9 @@ class ManagerHealthSyncJob(JobRunner):
         if endpoint is None:
             self.logger.error("ManagerHealthSyncJob requires a BMCEndpoint instance")
             return
-        if not _sync_manager_health(endpoint, logger_=self.logger):
-            raise RuntimeError(f"Manager health sync failed for {endpoint}")
+        error = _sync_manager_health(endpoint, logger_=self.logger)
+        if error is not None:
+            raise RuntimeError(f"Manager health sync failed for {endpoint}: {error}") from error
 
 
 class ScheduledManagerHealthSyncJob(JobRunner):
@@ -228,6 +268,11 @@ class ScheduledManagerHealthSyncJob(JobRunner):
     def run(self, *args, **kwargs):
         from .models import BMCEndpoint
 
-        endpoints = BMCEndpoint.objects.all()
-        succeeded = sum(_sync_manager_health(e, logger_=self.logger) for e in endpoints)
-        self.job.data = {"message": f"Synced {succeeded}/{len(endpoints)} endpoint(s)."}
+        all_endpoints = BMCEndpoint.objects.all()
+        endpoints = [e for e in all_endpoints if _sync_enabled("manager_health", e)]
+        skipped = len(all_endpoints) - len(endpoints)
+        succeeded = sum(_sync_manager_health(e, logger_=self.logger) is None for e in endpoints)
+        self.job.data = {
+            "message": f"Synced {succeeded}/{len(endpoints)} endpoint(s) "
+                       f"({skipped} skipped: sync disabled)."
+        }

@@ -495,3 +495,30 @@ msgstr "平文フィールド"
 
 msgid "netbox-secrets"
 msgstr "netbox-secrets"
+
+msgid "Sync Options"
+msgstr "同期オプション"
+
+msgid "Network sync is disabled for this endpoint."
+msgstr "このエンドポイントではネットワーク同期が無効になっています。"
+
+msgid "Sensors sync is disabled for this endpoint."
+msgstr "このエンドポイントではセンサー同期が無効になっています。"
+
+msgid "Event log sync is disabled for this endpoint."
+msgstr "このエンドポイントではイベントログ同期が無効になっています。"
+
+msgid "Manager health sync is disabled for this endpoint."
+msgstr "このエンドポイントではマネージャーヘルス同期が無効になっています。"
+
+msgid "Sync this endpoint's network configuration in the background. When disabled, the Network card is hidden and the manual sync button and scheduled bulk sync both skip this endpoint."
+msgstr "このエンドポイントのネットワーク設定をバックグラウンドで同期します。無効にすると、Network カードが非表示になり、手動同期ボタンと定期一括同期の両方がこのエンドポイントをスキップします。"
+
+msgid "Sync this endpoint's sensor telemetry in the background. When disabled, the Sensors card is hidden and the manual sync button and scheduled bulk sync both skip this endpoint."
+msgstr "このエンドポイントのセンサーテレメトリをバックグラウンドで同期します。無効にすると、Sensors カードが非表示になり、手動同期ボタンと定期一括同期の両方がこのエンドポイントをスキップします。"
+
+msgid "Sync this endpoint's System Event Log in the background. When disabled, the Event Log card is hidden and the manual sync button and scheduled bulk sync both skip this endpoint."
+msgstr "このエンドポイントの System Event Log をバックグラウンドで同期します。無効にすると、Event Log カードが非表示になり、手動同期ボタンと定期一括同期の両方がこのエンドポイントをスキップします。"
+
+msgid "Sync this endpoint's BMC health status in the background. When disabled, the Manager Health sync button and its fields on the Sync Status card are hidden, and the manual sync button and scheduled bulk sync both skip this endpoint."
+msgstr "このエンドポイントの BMC ヘルス状態をバックグラウンドで同期します。無効にすると、Sync Status カード内の Manager Health 同期ボタンと関連フィールドが非表示になり、手動同期ボタンと定期一括同期の両方がこのエンドポイントをスキップします。"

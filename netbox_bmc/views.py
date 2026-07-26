@@ -1,5 +1,6 @@
 
 from dcim.models import Device
+from django.conf import settings
 from django.contrib import messages
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -43,10 +44,16 @@ class BMCEndpointView(generic.ObjectView):
             instance.username
             and (not secrets_available or not instance.use_netbox_secrets or not secret_found)
         )
+        plugin_cfg = settings.PLUGINS_CONFIG.get("netbox_bmc", {})
+        sync_flags = {
+            kind: plugin_cfg.get(f"{kind}_sync_enabled", True)
+            for kind in ("network", "sensors", "event_log", "manager_health")
+        }
         return {
             "secrets_available": secrets_available,
             "secret_found": secret_found,
             "show_plaintext_credentials": show_plaintext_credentials,
+            "sync_flags": sync_flags,
         }
 
 
@@ -300,7 +307,11 @@ class NetworkSyncActionView(View):
             messages.error(request, _("Permission denied."))
             return redirect(endpoint.get_absolute_url())
 
-        from .jobs import NetworkSyncJob
+        from .jobs import NetworkSyncJob, _sync_enabled
+        if not _sync_enabled("network", endpoint):
+            messages.error(request, _("Network sync is disabled for this endpoint."))
+            return redirect(endpoint.get_absolute_url())
+
         NetworkSyncJob.enqueue(instance=endpoint, user=request.user)
         messages.success(request, _("Network sync queued."))
         return redirect(endpoint.get_absolute_url())
@@ -319,7 +330,11 @@ class ManagerHealthSyncActionView(View):
             messages.error(request, _("Permission denied."))
             return redirect(endpoint.get_absolute_url())
 
-        from .jobs import ManagerHealthSyncJob
+        from .jobs import ManagerHealthSyncJob, _sync_enabled
+        if not _sync_enabled("manager_health", endpoint):
+            messages.error(request, _("Manager health sync is disabled for this endpoint."))
+            return redirect(endpoint.get_absolute_url())
+
         ManagerHealthSyncJob.enqueue(instance=endpoint, user=request.user)
         messages.success(request, _("Manager health sync queued."))
         return redirect(endpoint.get_absolute_url())
@@ -338,7 +353,11 @@ class SensorsSyncActionView(View):
             messages.error(request, _("Permission denied."))
             return redirect(endpoint.get_absolute_url())
 
-        from .jobs import SensorsSyncJob
+        from .jobs import SensorsSyncJob, _sync_enabled
+        if not _sync_enabled("sensors", endpoint):
+            messages.error(request, _("Sensors sync is disabled for this endpoint."))
+            return redirect(endpoint.get_absolute_url())
+
         SensorsSyncJob.enqueue(instance=endpoint, user=request.user)
         messages.success(request, _("Sensors sync queued."))
         return redirect(endpoint.get_absolute_url())
@@ -357,7 +376,11 @@ class EventLogSyncActionView(View):
             messages.error(request, _("Permission denied."))
             return redirect(endpoint.get_absolute_url())
 
-        from .jobs import EventLogSyncJob
+        from .jobs import EventLogSyncJob, _sync_enabled
+        if not _sync_enabled("event_log", endpoint):
+            messages.error(request, _("Event log sync is disabled for this endpoint."))
+            return redirect(endpoint.get_absolute_url())
+
         EventLogSyncJob.enqueue(instance=endpoint, user=request.user)
         messages.success(request, _("Event log sync queued."))
         return redirect(endpoint.get_absolute_url())

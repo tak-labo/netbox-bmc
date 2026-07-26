@@ -140,6 +140,7 @@ BMC から取得するデータは「変化頻度」によって扱いが分か�
 | `sensors_sync_interval_minutes` | >0 で全 BMCEndpoint の定期センサー同期を有効化 |
 | `event_log_sync_interval_minutes` | >0 で全 BMCEndpoint の定期イベントログ同期を有効化 |
 | `manager_health_sync_interval_minutes` | >0 で全 BMCEndpoint の定期ヘルス同期を有効化 |
+| `network_sync_enabled` / `sensors_sync_enabled` / `event_log_sync_enabled` / `manager_health_sync_enabled` | デフォルト `True`。`False` にするとその同期種別をプラグイン全体で無効化するマスタースイッチ (各 `BMCEndpoint` の同名チェックボックスより優先) |
 | `default_verify_ssl` | エンドポイント作成時の SSL 検証デフォルト |
 | `service_account` / `service_private_key_path` | netbox-secrets 利用時のバックグラウンドジョブ用 |
 
