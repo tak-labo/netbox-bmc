@@ -47,6 +47,10 @@ docker compose restart netbox netbox-worker
 マイグレーションを新規追加した際は `manage.py makemigrations netbox_bmc --check --dry-run` で
 差分がないか検証する(`manage.py makemigrations` 本体は `DEVELOPER=True` 前提の netbox-docker
 コンテナでは実行できないことがあるため、hand-write + check の運用)。
+この check は NetBox コア側(`NetBoxModel` 抽象基底クラス)のフィールド定義が環境のNetBoxバージョンで
+変わった場合、`custom_field_data`/`tags` 等の無関係な drift も一緒に検出することがある。自分が追加した
+フィールド名が diff に含まれていなければ、それは pre-existing な環境差分であり自分の migration の
+問題ではない。
 
 ### i18n (英語/日本語)
 
@@ -119,6 +123,13 @@ BMC から取得するデータは「変化頻度」によって扱いが分か�
   - Sync Status カードの「Inventory Last Sync」/「Inventory Scan Status」(`last_sync` /
     `last_sync_status`)は上記とは別物で、`BuildModulesView` の Module インベントリスキャンの
     結果を指す。名前が紛らわしいため意図的に「Inventory」を冠して区別している。
+  - Network/Sensors/Event Log/Manager Health の各同期は `BMCEndpoint.<kind>_sync_enabled`
+    (デフォルト True)でエンドポイント単位に、`PLUGINS_CONFIG["netbox_bmc"]["<kind>_sync_enabled"]`
+    でプラグイン全体にON/OFFできる(後者が優先)。無効時は `Scheduled*SyncJob` がそのエンドポイント
+    をスキップし、手動 Sync ボタンの View も enqueue を拒否し、詳細ページのカードも非表示になる
+    (`jobs.py` の `_sync_enabled(kind, endpoint)` が判定を一元化)。Manager Health だけは専用カード
+    を持たず「Sync Status」カード内のボタン+2行のみが条件表示対象(同カード内の Inventory系フィールド
+    は対象外)。
 
 重要な不変条件：
 
