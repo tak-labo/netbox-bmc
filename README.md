@@ -23,7 +23,8 @@ Protocol is auto-detected: probes `/redfish/v1` first, then WS-MAN port 16993 (I
 
 | Manufacturer | Model Series | BMC | Protocol | Status |
 |---|---|---|---|---|
-| Dell | PowerEdge | iDRAC 9 | Redfish | Expected to work |
+| Dell | PowerEdge | iDRAC 9 | Redfish | Verified |
+| Dell | PowerEdge | iDRAC 10 | Redfish | Verified |
 | HPE | ProLiant | iLO 5 | Redfish | Expected to work |
 | HPE | ProLiant | iLO 6 | Redfish | Expected to work |
 | Lenovo | ThinkSystem | XCC2 / XCC3 | Redfish | Expected to work |
@@ -219,7 +220,7 @@ The following custom fields are set automatically on each Module:
 
 ### Dell iDRAC
 
-iDRAC 9 (Redfish 1.x) is the primary target. URI traversal starts from `ServiceRoot` links — no hardcoded paths — so firmware variations should be absorbed automatically.
+iDRAC 9 and iDRAC 10 are verified to work correctly. URI traversal starts from `ServiceRoot` links — no hardcoded paths — so firmware variations should be absorbed automatically. Service Tag is correctly mapped from the `SKU` field (not `SerialNumber`).
 
 ### HPE iLO
 
