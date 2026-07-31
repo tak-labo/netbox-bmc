@@ -2,6 +2,18 @@
 
 ## [Unreleased]
 
+## [0.4.32] - 2026-07-31
+
+- fix: use Dell iDRAC SKU field as Service Tag instead of SerialNumber — Dell iDRAC stores
+  the chassis-level Service Tag in the `SKU` field, while `SerialNumber` represents the
+  motherboard serial number which may change after motherboard replacement. Previously, the
+  plugin used `SerialNumber` for all vendors, which caused incorrect values in NetBox when a
+  Dell machine underwent motherboard swap (e.g., 10.210.29.105 showing motherboard serial
+  `CNCMS0033L003M` instead of the correct Service Tag `J12LBX3`). Now `DellRedfishDriver`
+  overrides `get_inventory()` to use `SKU` as the serial field when available, with
+  fallback to `SerialNumber` if `SKU` is empty. Other vendors (HPE/Lenovo/AMI) remain
+  unchanged as their `SKU` field has different semantics.
+
 ## [0.4.31] - 2026-07-26
 
 - fix(jobs): chain the original exception into the generic `RuntimeError` raised by
