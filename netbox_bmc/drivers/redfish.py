@@ -852,6 +852,14 @@ class DellRedfishDriver(RedfishDriver):
     """iDRAC: Oem.Dell 配下にジョブキューや詳細 FRU 情報がある。"""
     vendor = "Dell"
 
+    def get_inventory(self) -> InventoryResult:
+        result = super().get_inventory()
+        if result.system.sku:
+            # ponytail: Dell iDRAC stores Service Tag in SKU field, not SerialNumber.
+            # SerialNumber may change after motherboard replacement; SKU follows the chassis.
+            result.system.serial = result.system.sku
+        return result
+
 
 class HPERedfishDriver(RedfishDriver):
     """iLO: 古い iLO4 は Redfish 準拠度が低いので必要に応じて補正。"""

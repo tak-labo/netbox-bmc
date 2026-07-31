@@ -5,7 +5,7 @@ Tests run against mocked Redfish HTTP responses without a real BMC.
 """
 from unittest.mock import patch
 
-from netbox_bmc.drivers.redfish import AmiRedfishDriver, RedfishDriver
+from netbox_bmc.drivers.redfish import AmiRedfishDriver, DellRedfishDriver, RedfishDriver
 
 
 def make_driver():
@@ -287,3 +287,71 @@ def test_ami_fill_system_from_fru_no_override_existing():
     assert result.system.manufacturer == "ExistingMfr"
     assert result.system.model == "ExistingModel"
     assert result.system.serial == "ExistingSN"
+
+
+# --- Dell Service Tag ---------------------------------------------------
+
+def make_dell_driver():
+    """Create a DellRedfishDriver with _login mocked to avoid HTTP calls."""
+    with patch.object(DellRedfishDriver, "_login"):
+        return DellRedfishDriver("bmc.example.com", "admin", "pass")
+
+
+def test_dell_driver_uses_sku_as_serial_when_different():
+    """DellRedfishDriver should use SKU (Service Tag) instead of SerialNumber."""
+    driver = make_dell_driver()
+    sysres = {
+        "Manufacturer": "Dell Inc.",
+        "Model": "PowerEdge R660xs",
+        "SerialNumber": "CNCMS0033L003M",  # motherboard serial
+        "SKU": "J12LBX3",  # service tag
+        "UUID": "test-uuid",
+        "BiosVersion": "2.1",
+        "PowerState": "On",
+    }
+    with patch.object(driver, "_get", return_value={"Systems": {"@odata.id": "/redfish/v1/Systems"}}), \
+         patch.object(driver, "_collection", side_effect=[
+             [sysres],  # Systems collection
+             [],  # Processors
+             [],  # Memory
+             [],  # Drives
+             [],  # NICs
+             [],  # PSUs
+             [],  # Fans
+             [],  # PCIe devices
+         ]), \
+         patch.object(driver, "_collect_firmware", return_value=[]):
+        result = driver.get_inventory()
+
+    assert result.system.serial == "J12LBX3"  # should use SKU, not SerialNumber
+    assert result.system.sku == "J12LBX3"
+
+
+def test_dell_driver_fallback_to_serial_when_sku_empty():
+    """DellRedfishDriver should fall back to SerialNumber if SKU is empty."""
+    driver = make_dell_driver()
+    sysres = {
+        "Manufacturer": "Dell Inc.",
+        "Model": "PowerEdge R660xs",
+        "SerialNumber": "CNCMS0033L003M",
+        "SKU": "",  # empty SKU
+        "UUID": "test-uuid",
+        "BiosVersion": "2.1",
+        "PowerState": "On",
+    }
+    with patch.object(driver, "_get", return_value={"Systems": {"@odata.id": "/redfish/v1/Systems"}}), \
+         patch.object(driver, "_collection", side_effect=[
+             [sysres],  # Systems collection
+             [],  # Processors
+             [],  # Memory
+             [],  # Drives
+             [],  # NICs
+             [],  # PSUs
+             [],  # Fans
+             [],  # PCIe devices
+         ]), \
+         patch.object(driver, "_collect_firmware", return_value=[]):
+        result = driver.get_inventory()
+
+    assert result.system.serial == "CNCMS0033L003M"  # fall back to SerialNumber
+    assert result.system.sku == ""
