@@ -149,9 +149,9 @@ status messages in `self.job.data`) and gets a matching `msgid`/`msgstr` pair ad
 - `jobs.py` (like `views.py` and `models.py`) imports `django.utils.timezone` and isn't
   importable under this repo's Django-free `tests/` suite (see `CLAUDE.md`), so
   `_sync_enabled()` is verified the same way the rest of `jobs.py` already is: manually
-  against `netbox-dev.test1`, not via `uv run pytest`. No new pytest coverage is added
+  against `<dev-host>`, not via `uv run pytest`. No new pytest coverage is added
   for this change.
-- Manual verification on `netbox-dev.test1`: uncheck Event Log for one endpoint, confirm
+- Manual verification on `<dev-host>`: uncheck Event Log for one endpoint, confirm
   its card disappears, confirm `EventLogSyncActionView` POST (curl) is refused, confirm
   `ScheduledEventLogSyncJob` skips it while still syncing other endpoints. Then set
   `event_log_sync_enabled: False` in `PLUGINS_CONFIG` and confirm the checkbox disappears
